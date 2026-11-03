@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="820" viewBox="0 0 1080 820" role="img" aria-labelledby="title desc"><title id="title">应用通过三个包入口组装读取与反馈</title><desc id="desc">应用调用模型和执行器，创建文件工具；执行器不依赖文件工具实现。</desc><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/></marker></defs><rect width="1080" height="820" fill="#f8fafc"/><g font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif" fill="#0f172a">
+<text x="44" y="48" font-size="29" font-weight="700">应用组装三个包，材料独立存放</text>
+<text x="44" y="85" font-size="19">实线是应用调用或读取；下方文字列出包之间的依赖。</text>
+<rect x="44" y="120" width="992" height="130" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="64" y="156" font-size="23" font-weight="700">examples/code-review</text>
+<text x="64" y="192" font-size="18">持有 messages；配置任务、文件映射与凭据；按公开接口调用。</text>
+<text x="64" y="222" font-size="18">model 不保存历史；Runtime 不读取文件；具体工具不持有任务记录。</text>
+<path d="M 194 250 L 194 335" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="117" y="294" font-size="18">调用 complete</text>
+<path d="M 540 250 L 540 335" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="463" y="294" font-size="18">调用 executeTools</text>
+<path d="M 886 250 L 886 335" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="786" y="294" font-size="18">创建工具并注入执行器</text>
+<rect x="44" y="340" width="300" height="190" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="64" y="376" font-size="23" font-weight="700">@ai-harness/model</text>
+<text x="64" y="412" font-size="18">一次模型请求与响应转换</text>
+<text x="64" y="442" font-size="18">完整动作、结果历史的编码</text>
+<text x="64" y="472" font-size="18">返回 AssistantMessage</text>
+<text x="64" y="502" font-size="18">不执行本地工具</text>
+<rect x="390" y="340" width="300" height="190" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="410" y="376" font-size="23" font-weight="700">@ai-harness/runtime</text>
+<text x="410" y="412" font-size="18">名称分发、参数 JSON 解析</text>
+<text x="410" y="442" font-size="18">顺序等待注入工具的结果</text>
+<text x="410" y="472" font-size="18">保留请求 ID，返回整批结果</text>
+<text x="410" y="502" font-size="18">不导入 coding-tools</text>
+<rect x="736" y="340" width="300" height="190" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="756" y="376" font-size="19" font-weight="700">@ai-harness/coding-tools</text>
+<text x="756" y="412" font-size="18">createReadFileTool</text>
+<text x="756" y="442" font-size="18">检查参数与应用文件清单</text>
+<text x="756" y="472" font-size="18">读取有限大小的普通文件</text>
+<text x="756" y="502" font-size="18">返回源码或已知失败</text>
+<path d="M 886 530 L 886 595" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="903" y="569" font-size="18">读取</text>
+<rect x="736" y="600" width="300" height="120" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="756" y="636" font-size="23" font-weight="700">fixtures/code-review</text>
+<text x="756" y="672" font-size="18">src/cart.ts：待审查材料</text>
+<text x="756" y="702" font-size="18">不作为模块导入执行</text>
+<text x="44" y="589" font-size="22" font-weight="700">包依赖：</text>
+<text x="44" y="629" font-size="20">runtime → model：只消费消息契约。</text>
+<text x="44" y="669" font-size="20">coding-tools → runtime：消费工具契约和已知错误。</text>
+<text x="44" y="709" font-size="20">通用包不依赖 examples 或 fixtures。</text>
+<text x="44" y="780" font-size="20">结果经 Runtime 返回应用；应用显式写入 messages，再请求模型。</text>
+</g></svg>

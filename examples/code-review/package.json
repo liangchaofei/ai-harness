@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@ai-harness/model": "0.1.0"
+    "@ai-harness/model": "0.1.0",
+    "@ai-harness/runtime": "0.1.0",
+    "@ai-harness/coding-tools": "0.1.0"
   }
 }

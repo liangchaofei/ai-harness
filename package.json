@@ -15,7 +15,7 @@
     "docs:dev": "npm run dev --workspace @ai-harness/site",
     "docs:build": "npm run build --workspace @ai-harness/site",
     "docs:preview": "npm run preview --workspace @ai-harness/site",
-    "build": "npm run build --workspace @ai-harness/model",
+    "build": "npm run build --workspace @ai-harness/model && npm run build --workspace @ai-harness/runtime && npm run build --workspace @ai-harness/coding-tools",
     "check": "npm run build && tsc --noEmit",
     "start": "npm run build && node --env-file=.env --import tsx examples/code-review/src/main.ts",
     "debug": "npm run build && node --enable-source-maps --env-file=.env --inspect-brk --import tsx examples/code-review/src/main.ts"

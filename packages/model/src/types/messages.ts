@@ -1,33 +1,24 @@
-// 模型输入与返回消息。
+// 【修改】历史消息能够保存完整动作与对应反馈。
 import type { ToolCall } from './tools';
+import type { ToolResultMessage } from './tool-results';
 
-/**
- * 上下文中的一条文本消息。
- * 应用组织输入时创建，模型包读取它并转换为服务消息。
- */
-export interface Message {
-  /** user 表示用户侧输入，assistant 表示已有模型回答；本篇输入只有 user 消息。 */
-  role: 'user' | 'assistant';
-
-  /** 该角色提供的文本，例如本次审查要求与待审查代码。 */
+/** 应用根据用户任务创建，模型包读取的输入消息。 */
+export interface UserMessage {
+  role: 'user';
+  /** 用户要求；文件内容由后续工具结果提供。 */
   content: string;
 }
 
-// 【修改】返回消息增加工具请求列表与toolUse停止原因。
-/**
- * 模型包检查并转换服务响应后返回的消息，可包含文字与工具请求。
- * 应用接收它，再决定是否展示；取得消息不等于任务完成。
- */
+/** 模型包转换服务响应后的生成结果；应用决定如何继续并保存。 */
 export interface AssistantMessage {
-  /** 固定为 assistant，标明这条生成结果来自模型。 */
   role: 'assistant';
-
-  /** 本次生成的文本，可能为空或被截断，由应用决定如何处理。 */
+  /** 模型文字，可为空；不能当成本地执行证据。 */
   content: string;
-
-  /** stop 正常停止，length 达到生成上限，toolUse 请求工具；均不证明任务完成。 */
+  /** stop 正常停止；length 截断；toolUse 请求执行工具。 */
   stopReason: 'stop' | 'length' | 'toolUse';
-
-  /** 全部工具请求，保持返回顺序；纯文本结果为空数组。 */
+  /** 按服务返回顺序保留的全部请求；纯文本消息为空数组。 */
   toolCalls: readonly ToolCall[];
 }
+
+/** 应用持有的对话记录项；保留角色才能正确组装下一次输入。 */
+export type Message = UserMessage | AssistantMessage | ToolResultMessage;
