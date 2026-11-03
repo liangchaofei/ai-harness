@@ -6,7 +6,7 @@
 
 main仍无提交；作者修改site候选/正文、docs与AGENTS，不写入学习者packages/examples/fixtures，不切分支或提交推送。固定Pi提交8efd314fa3d3232ce197d8d7a6a5660530b9d83e，实际读取index、types、Models.complete/stream、DeepSeek提供商、OpenAI-completions协议及事件流结果实现。不是仅核对Context接口或README。
 
-当前四份源码：types.ts、providers/deepseek.ts、纯导出index.ts、示例main.ts。Context与CompleteOptions分开，complete返回assistant消息和stop/length；HTTP/JSON失败抛异常，截断结果由应用决定是否交付。与Pi的流式底层、内容块、提供商集合、完整鉴权和错误机制的差异均在正文标明。
+当前七份源码：types/messages.ts、types/context.ts、types/options.ts、validation.ts、providers/deepseek.ts、纯导出index.ts、示例main.ts。Context与CompleteOptions分开，complete返回assistant消息和stop/length；HTTP/JSON失败抛异常，截断结果由应用决定是否交付。与Pi的流式底层、内容块、提供商集合、完整鉴权和错误机制的差异均在正文标明。
 
 ## 构建与程序验证
 
@@ -63,3 +63,9 @@ npm run docs:build与git diff --check通过；Waza标点检查通过。4174服�
 用户截图中包导入与process标红。实际检查配置已声明@types/node与workspace依赖，但node_modules/@types/node、node_modules/@ai-harness/model和packages/model/dist均不存在。执行根目录npm install，再运行npm run check，ESM与声明构建及项目类型检查全部通过；未修改学习源码，未读取.env或运行模型入口。npm安装更新依赖及锁文件，构建仅生成dist。
 
 正文补充安装构建前的暂时编辑器错误说明，以及安装、workspace连接、生成声明文件之间的关系；保留包入口导入。网站构建和标点检查通过。命令行检查通过不等于已观察到VS Code错误消失；若编辑器缓存仍在，提示重启TS Server。
+
+## 从01直接采用类型目录（2026-11-03）
+
+用户要求减少重复迁移，最终正文以01直接创建src/types/messages.ts、context.ts、options.ts为起点。01候选删除总types.ts，内部类型导入与公开index同步，分步与七份完整文件一致；02沿用这套结构，仅新增工具类型并扩展消息和上下文，不再要求移动类型文件或重写配置类型。此前同日关于迁移的记录是作者修订历史。
+
+01临时工程删除总types.ts、复制最新候选后，构建、声明及项目类型检查与18组公开包固定响应验证通过。02对应检查和30组固定响应验证通过。两篇手写摘录与各自候选一致；9个既有学习文件哈希未变。网页实际核对01创建路径、02替换步骤、沿用文件和完整引用，无旧总类型文件操作或#region泄漏。网站构建和标点检查通过；没有真实模型调用、学习源码改写或Git提交推送。

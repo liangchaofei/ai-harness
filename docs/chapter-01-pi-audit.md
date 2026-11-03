@@ -13,7 +13,7 @@
 
 ## 当前实现与范围
 
-五份源码：types.ts、validation.ts、index.ts、providers/deepseek.ts、示例main.ts。借鉴Context/AssistantMessage边界和纯导出入口；保留角色、内容与stopReason；stop/length作为模型结果返回，示例再决定是否交付。
+七份源码：types/messages.ts、types/context.ts、types/options.ts、validation.ts、index.ts、providers/deepseek.ts、示例main.ts。借鉴Context/AssistantMessage边界和纯导出入口；保留角色、内容与stopReason；stop/length作为模型结果返回，示例再决定是否交付。
 
 教学简化：字符串内容代替完整内容块，仅一提供商、一次非流式HTTP、不含OAuth/鉴权解析、用量、提供商集合或工具请求。原生fetch、30秒等待、配置显式传入及异常抛出是本项目选择，不能归于Pi。
 

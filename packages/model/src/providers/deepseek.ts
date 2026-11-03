@@ -1,23 +1,8 @@
-// 【新增文件】当前唯一提供商的文本接入；API字段留在适配内部。
-import type { AssistantMessage, CompleteOptions, Context } from '../types';
-import { isRecord } from '../validation';
-
-/** 保留可识别的停止原因；是否接受截断文本由调用方判断。 */
-function decodeMessage(value: unknown): AssistantMessage {
-  if (!isRecord(value) || !Array.isArray(value.choices)) {
-    throw new Error('模型响应缺少choices数组。');
-  }
-  const choice: unknown = value.choices[0];
-  if (!isRecord(choice) || (choice.finish_reason !== 'stop' && choice.finish_reason !== 'length')) {
-    throw new Error('模型返回了本篇尚不支持的停止原因。');
-  }
-  const message = choice.message;
-  if (!isRecord(message) || message.role !== 'assistant' || typeof message.content !== 'string') {
-    throw new Error('模型没有返回可识别的assistant文本消息。');
-  }
-  return { role: 'assistant', content: message.content, stopReason: choice.finish_reason };
-}
-
+// 【修改】继续负责请求，将响应转换交给同目录的解码模块。
+import type { AssistantMessage } from '../types/messages';
+import type { Context } from '../types/context';
+import type { CompleteOptions } from '../types/options';
+import { decodeMessage } from './deepseek-response';
 
 /** 只取得一次模型结果，不把停止生成等同于任务完成。 */
 export async function complete(context: Context, options: CompleteOptions): Promise<AssistantMessage> {
@@ -41,6 +26,11 @@ export async function complete(context: Context, options: CompleteOptions): Prom
     body: JSON.stringify({
       model: options.model,
       messages,
+      // 【新增】把应用工具说明转换为服务协议；未提供时不发送tools字段。
+      tools: context.tools?.length ? context.tools.map((tool) => ({
+        type: 'function',
+        function: { name: tool.name, description: tool.description, parameters: tool.parameters },
+      })) : undefined,
       stream: false,
       thinking: { type: 'disabled' },
       max_tokens: maxTokens,

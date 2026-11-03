@@ -1,7 +1,9 @@
 // #region full
 // #region imports
 // 【新增文件】当前唯一提供商的文本接入；API字段留在适配内部。
-import type { AssistantMessage, CompleteOptions, Context } from '../types';
+import type { AssistantMessage } from '../types/messages';
+import type { Context } from '../types/context';
+import type { CompleteOptions } from '../types/options';
 import { isRecord } from '../validation';
 // #endregion imports
 

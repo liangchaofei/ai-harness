@@ -20,6 +20,7 @@ export default defineConfig({
       ] },
       { text: '第一阶段 · 基础原理与运行内核', items: [
         { text: '01 从包入口发起模型调用', link: '/guide/01-model-call' },
+        { text: '02 让模型提出工具请求', link: '/guide/02-tool-requests' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },

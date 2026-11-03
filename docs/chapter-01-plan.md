@@ -10,4 +10,4 @@
 
 ## 2026-11-02源码核对后的当前设计
 
-以上为初稿计划记录。当前候选分为index纯导出、types契约、validation包内判断、providers/deepseek适配与应用五份源码。Context与CompleteOptions分开，complete返回AssistantMessage并保留stop/length；示例决定截断或空文本不交付。包内分离后使用tsup打包ESM与d.ts，TypeScript锁5.9.3以支持打包器需要的编译器API。只借鉴已读取的Pi边界，暂不复制提供商集合和流式系统。
+以上为初稿计划记录。当前候选分为index纯导出、types目录的消息/上下文/配置契约、validation包内判断、providers/deepseek适配与应用七份源码。Context与CompleteOptions分开，complete返回AssistantMessage并保留stop/length；示例决定截断或空文本不交付。包内分离后使用tsup打包ESM与d.ts，TypeScript锁5.9.3以支持打包器需要的编译器API。只借鉴已读取的Pi边界，暂不复制提供商集合和流式系统。
