@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1142" viewBox="0 0 1080 1142" role="img" aria-labelledby="title desc">
+<title id="title">一次工具批次：执行到返回的处理顺序</title><desc id="desc">图中两段对应 execute-tools.ts 与 read-file.ts；同一批请求顺序执行。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/></marker></defs>
+<rect width="1080" height="1142" fill="#f8fafc"/>
+<g font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif" fill="#0f172a">
+<text x="44" y="49" font-size="29" font-weight="700">一次工具批次：执行到返回的处理顺序</text>
+<text x="44" y="89" font-size="19" fill="#475569">图中两段对应 execute-tools.ts 与 read-file.ts；同一批请求顺序执行。</text>
+<rect x="44" y="120" width="992" height="128" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="68" y="154" font-size="23" font-weight="700">Runtime：接收完整模型消息与本地工具清单</text>
+<text x="68" y="188" font-size="20">必须是非空 toolUse；执行前检查本地工具重名、请求 ID 为空或重复。</text>
+<text x="68" y="218" font-size="20">不满足则整批不开始；检查通过后，逐项处理。</text>
+<path d="M 540 251 L 540 268" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="44" y="272" width="992" height="128" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="68" y="306" font-size="23" font-weight="700">Runtime：按名称取工具，解析原始 JSON 参数</text>
+<text x="68" y="340" font-size="20">找不到工具或 JSON 非法 → 本项失败结果；继续下一项。</text>
+<text x="68" y="370" font-size="20">找到工具并解析成功 → await tool.execute(argumentsValue)。</text>
+<path d="M 540 403 L 540 420" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="44" y="424" width="992" height="128" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="68" y="458" font-size="23" font-weight="700">文件工具：检查数据，查应用允许的映射</text>
+<text x="68" y="492" font-size="20">只接受含一个字符串 path 的对象；清单中没有该名称就拒绝。</text>
+<text x="68" y="522" font-size="20">配置是可信应用指定的普通练习文件，不接受模型指定磁盘根目录。</text>
+<path d="M 540 555 L 540 572" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="44" y="576" width="992" height="128" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="68" y="610" font-size="23" font-weight="700">文件工具：打开 → 确认普通文件 → 有限读取 → 关闭</text>
+<text x="68" y="644" font-size="20">最多读取 16385 字节；超过 16 KiB 时不返回内容。</text>
+<text x="68" y="674" font-size="20">finally 关闭句柄；成功返回“可见路径 + 源码”文本。</text>
+<path d="M 540 707 L 540 724" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="44" y="728" width="992" height="128" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="68" y="762" font-size="23" font-weight="700">Runtime：接住返回值或异常，创建关联结果</text>
+<text x="68" y="796" font-size="20">成功：isError = false；ToolExecutionError：isError = true。</text>
+<text x="68" y="826" font-size="20">未知异常：抛出并停止后续项；已发生动作不回滚。</text>
+<path d="M 540 859 L 540 876" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="44" y="880" width="992" height="128" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="68" y="914" font-size="23" font-weight="700">Runtime 返回整批结果，应用接住并更新记录</text>
+<text x="68" y="948" font-size="20">全部正常结束的批次才 return results；不在执行器里调用模型。</text>
+<text x="68" y="978" font-size="20">应用保存原请求一次、各结果一次，然后开始第二次模型调用。</text>
+<text x="44" y="1057" font-size="18" fill="#475569">失败反馈只包含明确允许公开的说明；没有并发、回滚或恢复。</text></g></svg>
