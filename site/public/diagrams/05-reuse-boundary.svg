@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1000" viewBox="0 0 1080 1000" role="img" aria-labelledby="title desc"><title id="title">两个应用使用同一个运行内核</title><desc id="desc">固定入口选择应用；任务、工具、接受规则属于应用，运行循环保持不变。</desc><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/></marker></defs><rect width="1080" height="1000" fill="#f8fafc"/><g font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif" fill="#0f172a">
+<text x="40" y="48" font-size="29" font-weight="700">换任务与工具，循环保持不变</text>
+<text x="40" y="88" font-size="19">当前实现：两种应用各自运行；任务规则没有进入通用 Runtime。</text>
+<rect x="40" y="118" width="1000" height="110" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="154" font-size="23" font-weight="700">examples/run.ts：固定入口选择</text>
+<text x="62" y="192" font-size="20">默认 code-review；--example release-impact 选择调查，保留任务文本参数。</text>
+<path d="M 300 228 L 300 278" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 780 228 L 780 278" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="282" width="480" height="220" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="318" font-size="23" font-weight="700">应用一：代码审查</text>
+<text x="62" y="356" font-size="20">工具：read_file（来自 coding-tools）</text>
+<text x="62" y="387" font-size="20">材料：fixtures/code-review</text>
+<text x="62" y="418" font-size="20">接受：目标源码成功读取＋有回答</text>
+<text x="62" y="449" font-size="20">核对源码中的具体计算结论</text>
+<rect x="560" y="282" width="480" height="220" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="582" y="318" font-size="23" font-weight="700">应用二：发布影响调查</text>
+<text x="582" y="356" font-size="20">工具：lookup_release / lookup_service</text>
+<text x="582" y="387" font-size="20">材料：fixtures/release-impact</text>
+<text x="582" y="418" font-size="20">接受：发布和服务证据齐全＋有回答</text>
+<text x="582" y="449" font-size="20">不依赖 coding-tools</text>
+<path d="M 300 502 L 300 566" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 780 502 L 780 566" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="70" y="542" font-size="20">各自调用 runAgent，注入工具和模型函数</text>
+<rect x="40" y="570" width="1000" height="180" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="606" font-size="23" font-weight="700">同一个 @ai-harness/runtime</text>
+<text x="62" y="644" font-size="20">调用模型函数 → 按名称执行注入工具 → 关联结果并保存 → 再次调用。</text>
+<text x="62" y="675" font-size="20">正常回答、截断、调用上限、空文本或异常时，返回明确 RunResult。</text>
+<text x="62" y="706" font-size="20">不导入示例、材料；没有 src/cart.ts 或 release-42 的业务分支。</text>
+<rect x="40" y="800" width="1000" height="140" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="836" font-size="23" font-weight="700">共用应用代码：examples/shared（由上面的应用使用）</text>
+<text x="62" y="874" font-size="20">createModelCall 绑定模型配置；printRun 展示已有记录和受控异常。</text>
+<text x="62" y="905" font-size="20">两个应用各自的 reportRun 保留任务接受规则；Runtime 不导入 shared。</text>
+<text x="40" y="976" font-size="18">model、runtime、coding-tools 的接口与执行实现均复用 04；包化不代表生产能力已经完成。</text>
+</g></svg>

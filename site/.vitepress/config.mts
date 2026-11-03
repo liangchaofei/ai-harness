@@ -23,6 +23,7 @@ export default defineConfig({
         { text: '02 让模型提出工具请求', link: '/guide/02-tool-requests' },
         { text: '03 执行工具，把结果交回模型', link: '/guide/03-tool-feedback' },
         { text: '04 让 Runtime 自动继续与停止', link: '/guide/04-agent-loop' },
+        { text: '05 换任务，检验同一个运行内核', link: '/guide/05-runtime-reuse' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },

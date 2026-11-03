@@ -1,16 +1,16 @@
-// 【修改】应用只组装模型接入、任务与工具，由 Runtime 自动推进。
-import { complete } from '@ai-harness/model';
-import { runAgent, type ModelCall } from '@ai-harness/runtime';
+// 应用只组装模型接入、任务与工具，由 Runtime 自动推进。
+// 【修改】模型连接配置由两个示例共用，运行仍使用原公开入口。
+import { runAgent } from '@ai-harness/runtime';
+import { createModelCall } from '../../shared/model';
 import { reviewTools } from './tools';
 import { reportRun } from './report-run';
 
-const model = process.env.DEEPSEEK_MODEL?.trim() || 'deepseek-flash';
 const reviewPath = 'src/cart.ts';
 const prompt = process.argv[2] ?? `请审查${reviewPath}：先读取源码，再指出一个会影响计算结果的问题，并给出具体输入和正确结果。`;
-const options = { apiKey: process.env.DEEPSEEK_API_KEY?.trim() ?? '', model, maxTokens: 256 };
 
-// 【新增】函数接收每次最新的上下文；服务配置由应用绑定，不传进通用循环。
-const callModel: ModelCall = (context) => complete(context, options);
+
+// 【修改】取得同样的调用能力；任务、工具和接受条件保持独立。
+const callModel = createModelCall();
 
 try {
   const result = await runAgent({
@@ -20,7 +20,7 @@ try {
     callModel,
     maxModelCalls: 6,
   });
-  // 【修改】不再手动追加消息或写两次 complete；读取 Runtime 的结果进行展示。
+  // 不再手动追加消息或写两次 complete；读取 Runtime 的结果进行展示。
   if (!reportRun(result, reviewPath)) process.exitCode = 1;
 } catch {
   console.error('运行配置或展示异常，请在入口 catch 断点检查；未输出原始异常正文。');
