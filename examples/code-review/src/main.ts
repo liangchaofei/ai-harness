@@ -1,12 +1,14 @@
-// 【新增文件】示例提供上下文和配置，并决定本次结果是否足以展示。
+// 【修改】应用提供工具说明，区分待执行请求与可以显示的文本。
 import { complete, type Context } from '@ai-harness/model';
+import { reviewTools } from './tools';
 
 const model = process.env.DEEPSEEK_MODEL?.trim() || 'deepseek-flash';
-const prompt = process.argv[2] ??
-  '请指出这段TypeScript函数的一个问题：function first(items: string[]) { return items[0].toUpperCase(); }';
+const prompt = process.argv[2] ?? '请审查src/cart.ts，先取得源码，再根据内容指出问题。';
 const context: Context = {
-  systemPrompt: '你是代码审查助手。只根据用户消息中的代码说明问题，不声称读取本地文件或运行过代码。回答简短。',
+  systemPrompt: '你是代码审查助手。缺少源码时请求read_file，不编造文件内容或执行结果。',
   messages: [{ role: 'user', content: prompt }],
+  // 【新增】只发送动作说明，没有执行函数或文件内容。
+  tools: reviewTools,
 };
 
 try {
@@ -19,10 +21,17 @@ try {
   });
   console.log('模型消息（message）：', JSON.stringify(message));
 
-  // 截断是实际返回的结果状态，不伪装成网络失败或完整回答。
-  if (message.stopReason !== 'stop') throw new Error('输出已截断，本次不交付为完整回答。');
-  if (!message.content.trim()) throw new Error('没有可显示的文本，本次不交付回答。');
-  console.log('模型文本（text）：', message.content);
+  // 【修改】先拦截截断，避免把不完整的工具参数当作可用请求。
+  if (message.stopReason === 'length') throw new Error('输出已截断，本次不接受文本或工具请求。');
+  if (message.stopReason === 'toolUse') {
+    for (const call of message.toolCalls) {
+      console.log('待执行工具请求：', JSON.stringify(call));
+    }
+    console.log('本篇停在请求阶段，工具执行次数：0；尚未取得源码。');
+  } else {
+    if (!message.content.trim()) throw new Error('没有可显示的文本，本次不交付回答。');
+    console.log('模型文本（text）：', message.content);
+  }
 } catch (error) {
   console.error('本次调用未交付：', error instanceof Error ? error.message : String(error));
   process.exitCode = 1;

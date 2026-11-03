@@ -24,7 +24,7 @@ function first(items: string[]) {
 |---|---|---|
 | 任务和展示 | `examples/code-review/src/main.ts` | 可以换成别的任务应用或桌面界面 |
 | 模型调用和响应转换 | `packages/model/src/providers/deepseek.ts` | 后续由运行内核通过公开入口调用 |
-| 公开契约与导出 | `types.ts`与`index.ts` | 应用依赖包入口，服务实现不堆在入口 |
+| 公开契约与导出 | `types/`与`index.ts` | 应用依赖包入口，服务实现不堆在入口 |
 | 执行工具、保存运行状态、决定是否继续 | 本篇尚未实现 | 后续放进 Runtime，不塞进示例或模型包 |
 | 被审查的代码 | 本次用户消息里的字符串 | 不等于模型已经读取磁盘文件 |
 
@@ -53,7 +53,7 @@ function first(items: string[]) {
 
 | 参考位置 | 借鉴的职责 | 本篇落地 |
 |---|---|---|
-| [`types.ts`](https://github.com/earendil-works/pi/blob/8efd314fa3d3232ce197d8d7a6a5660530b9d83e/packages/ai/src/types.ts)的`Context/AssistantMessage` | 输入信息与模型消息有明确形状，输出保留角色和停止原因 | `types.ts`定义上下文、文本消息和调用配置；只保留本篇所需字段 |
+| [`types.ts`](https://github.com/earendil-works/pi/blob/8efd314fa3d3232ce197d8d7a6a5660530b9d83e/packages/ai/src/types.ts)的`Context/AssistantMessage` | 输入信息与模型消息有明确形状，输出保留角色和停止原因 | `types/`下的三个文件定义文本消息、上下文和调用配置；只保留本篇所需字段 |
 | [`index.ts`](https://github.com/earendil-works/pi/blob/8efd314fa3d3232ce197d8d7a6a5660530b9d83e/packages/ai/src/index.ts) | 公开入口负责导出，服务实现不全部堆在入口 | 本篇`index.ts`只导出类型和`complete` |
 | [`providers/deepseek.ts`](https://github.com/earendil-works/pi/blob/8efd314fa3d3232ce197d8d7a6a5660530b9d83e/packages/ai/src/providers/deepseek.ts)与[`api/openai-completions.ts`](https://github.com/earendil-works/pi/blob/8efd314fa3d3232ce197d8d7a6a5660530b9d83e/packages/ai/src/api/openai-completions.ts) | 提供商配置与协议处理有归属；API 字段转换为项目消息 | 本篇仅一个提供商，把配置与文本协议暂放`providers/deepseek.ts` |
 
@@ -77,7 +77,10 @@ tsconfig.json                    根目录类型检查
 packages/model/
   package.json                   声明公开入口与构建命令
   tsconfig.json                  类型与构建设置
-  src/types.ts                   公共输入输出契约
+  src/types/
+    messages.ts                  对话消息与模型返回消息
+    context.ts                   本次输入上下文
+    options.ts                   连接与生成配置
   src/validation.ts              包内通用的数据形状判断
   src/providers/deepseek.ts      当前提供商的请求与响应转换
   src/index.ts                   只导出公开能力
@@ -120,11 +123,21 @@ examples/code-review/
 
 这次调用的两端是示例应用和模型接入包。应用知道要审查什么代码、使用什么模型；模型包负责连接服务，最终把生成结果交回来。先约定两端交换的数据，后面的函数才能知道该接收什么、返回什么。
 
-本篇使用四个类型：`Message`描述一条对话消息；`Context`把总体要求和对话放在一起；`CompleteOptions`携带连接与生成配置；`AssistantMessage`描述一次返回的模型消息。它们放在`types.ts`，让示例与模型包使用同一份约定。
+本篇使用四个类型：`Message`描述一条对话消息；`Context`把总体要求和对话放在一起；`CompleteOptions`携带连接与生成配置；`AssistantMessage`描述一次返回的模型消息。它们分别放在`types/messages.ts`、`types/context.ts`和`types/options.ts`，通过包入口供应用使用。
 
-新建`packages/model/src/types.ts`，写入完整代码。每个类型上方的注释说明用途和创建、使用关系；字段注释说明角色、可省略时的行为及结果状态，方便回到编辑器时直接查阅：
+先创建`packages/model/src/types/`目录。下面按消息、上下文、调用配置的顺序，新建三个文件；每处代码都是对应文件的完整内容，写入一次即可。
 
-<<< @/snippets/01-model-call/packages/model/src/types.ts#full
+### 定义输入消息与模型返回消息
+
+新建`packages/model/src/types/messages.ts`，写入下面完整代码，其中同时定义`Message`和`AssistantMessage`。应用用前者组织对话，模型包用后者返回本次结果；字段上方的注释说明角色、文本和停止原因的含义：
+
+<<< @/snippets/01-model-call/packages/model/src/types/messages.ts#full
+
+### 组合本次输入上下文
+
+新建`packages/model/src/types/context.ts`，写入下面完整代码。通过类型导入从同目录的`messages.ts`取得`Message`，`Context.messages`使用它描述对话数组：
+
+<<< @/snippets/01-model-call/packages/model/src/types/context.ts#full
 
 ### 应用先创建输入，模型包随后使用
 
@@ -140,6 +153,12 @@ examples/code-review/
 这份值符合`Context`：总体要求在`systemPrompt`，本次任务在`messages[0].content`。数组中的对象符合`Message`，`role:'user'`表示它来自用户。`Message`也允许 assistant 文本，供以后组织已有回答使用；本次输入还没有 assistant 消息。
 
 `readonly Message[]`限制通过这个类型增删或替换数组项，并不冻结消息对象；本次调用不追加历史，是`complete`的实际行为约定，不能仅凭`readonly`推断。
+
+### 定义连接与生成配置
+
+新建`packages/model/src/types/options.ts`，写入下面完整代码。应用创建配置，模型包据此选择服务模型、设置鉴权和输出上限：
+
+<<< @/snippets/01-model-call/packages/model/src/types/options.ts#full
 
 密钥、模型名和输出上限通过另一个参数`CompleteOptions`传入。`model:'deepseek-flash'`选择服务模型，`maxTokens:256`控制本次输出上限，`apiKey`用于请求鉴权。这些是连接和生成配置，不属于发给模型分析的对话内容。
 
@@ -272,7 +291,7 @@ HTTP 状态失败时先抛错，不继续当作正常模型响应处理。状态
 
 ## 第四步：应用接住消息，再决定怎样展示
 
-模型包的四个部分已经有了分工：`types.ts`定义交换的数据，`validation.ts`提供包内数据判断，`providers/deepseek.ts`完成服务接入，`index.ts`提供应用使用的公开入口。
+模型包的四个部分已经有了分工：`types/`下的三个文件定义交换的数据，`validation.ts`提供包内数据判断，`providers/deepseek.ts`完成服务接入，`index.ts`提供应用使用的公开入口。
 
 新建`packages/model/src/index.ts`：
 
@@ -405,10 +424,18 @@ Pi 将提供商、协议适配、模型集合与流式事件进一步分层。�
 
 ## 完整文件核对
 
-配置见前面的六个展开块。下面五份源码与分步实现同源，不需要重复追加。
+配置见前面的六个展开块。下面七份源码与分步实现同源，不需要重复追加。
 
-::: details packages/model/src/types.ts
-<<< @/snippets/01-model-call/packages/model/src/types.ts#full
+::: details packages/model/src/types/messages.ts
+<<< @/snippets/01-model-call/packages/model/src/types/messages.ts#full
+:::
+
+::: details packages/model/src/types/context.ts
+<<< @/snippets/01-model-call/packages/model/src/types/context.ts#full
+:::
+
+::: details packages/model/src/types/options.ts
+<<< @/snippets/01-model-call/packages/model/src/types/options.ts#full
 :::
 
 ::: details packages/model/src/validation.ts
