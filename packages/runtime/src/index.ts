@@ -1,9 +1,14 @@
+// 【修改】内部文件归组，原公开函数和错误类名称保留。
 // 应用和能力包只从此入口消费 Runtime。
 export type { ExecutableTool } from './types/tools';
-export { ToolExecutionError } from './tool-error';
-export { executeTools } from './execute-tools';
+export { ToolExecutionError } from './errors/tool-execution-error';
+export { executeTools } from './tools/execute';
 
-// 【新增】公开运行入口及其调用契约，应用不导入 Runtime 内部文件。
+// 公开运行入口及其调用契约，应用不导入 Runtime 内部文件。
 export type { ModelCall } from './types/model-call';
 export type { RunAgentOptions, RunResult } from './types/run';
 export { runAgent } from './run-agent';
+
+// 【新增】公开受控失败类型；批次内部错误不从包入口导出。
+export type { RunFailure, RunFailureCode } from './types/failures';
+export type { ToolFailureCode } from './types/tool-registry';

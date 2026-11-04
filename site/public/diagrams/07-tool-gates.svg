@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1090" viewBox="0 0 1080 1090" role="img" aria-labelledby="title desc">
+<title id="title">同一个工具：先检查声明，再检查每次请求</title><desc id="desc">当前 Runtime 的执行路径；结构校验与具体执行范围是两道不同检查。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/></marker></defs>
+<rect width="1080" height="1090" fill="#f8fafc"/>
+<g font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif" fill="#0f172a">
+<text x="40" y="48" font-size="28" font-weight="700">同一个工具：先检查声明，再检查每次请求</text>
+<text x="40" y="86" font-size="19" fill="#475569">当前 Runtime 的执行路径；结构校验与具体执行范围是两道不同检查。</text>
+<rect x="40" y="118" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="152" font-size="23" font-weight="700">1．应用提供工具：名称、说明、schema 与 execute</text>
+<text x="62" y="185" font-size="20">任务侧选择工具和允许范围；模型只看说明，execute 留在本地。</text>
+<text x="62" y="215" font-size="20">schema 来自可信应用代码，不从模型输出编译。</text>
+<path d="M 540 247 L 540 264" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="268" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="302" font-size="23" font-weight="700">2．第一次模型调用之前：准备本次工具清单</text>
+<text x="62" y="335" font-size="20">检查重名和名称 → 复制参数 schema → Ajv 编译同步校验函数。</text>
+<text x="62" y="365" font-size="20">配置错误直接停止：tool_configuration，模型调用次数为 0。</text>
+<path d="M 540 397 L 540 414" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="418" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="452" font-size="23" font-weight="700">3．模型提出工具请求，Runtime 保存 assistant</text>
+<text x="62" y="485" font-size="20">例如 read_1 / read_file / 参数文本 {&quot;path&quot;:123}。</text>
+<text x="62" y="515" font-size="20">模型输出仍是请求；没有在服务端打开本地文件。</text>
+<path d="M 540 547 L 540 564" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="568" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="602" font-size="23" font-weight="700">4．逐项进入执行器：查工具 → 解析 JSON → 校验结构</text>
+<text x="62" y="635" font-size="20">数值 path 不符合字符串要求：invalid_arguments，创建失败反馈。</text>
+<text x="62" y="665" font-size="20">结构通过才沿下方路径进入 execute；已知失败跳过执行。</text>
+<path d="M 540 697 L 540 714" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="718" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="752" font-size="23" font-weight="700">5．结构通过：工具继续检查具体执行范围</text>
+<text x="62" y="785" font-size="20">例如 path = src/cart.ts，还需匹配应用允许的文件清单。</text>
+<text x="62" y="815" font-size="20">清单不允许仍是已知工具失败；允许才实际读取并返回源码。</text>
+<path d="M 540 847 L 540 864" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="868" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="902" font-size="23" font-weight="700">6．整批返回：Runtime 保存反馈，再次请求模型</text>
+<text x="62" y="935" font-size="20">各结果分别关联原请求 ID；成功和已知失败都可以成为下一轮信息。</text>
+<text x="62" y="965" font-size="20">未知异常走停止分支，保留已完成结果，不执行剩余项。</text>
+<text x="40" y="1038" font-size="18" fill="#475569">这是数据与执行准入；没有实现事务回滚、自动恢复或操作系统安全沙箱。</text></g></svg>

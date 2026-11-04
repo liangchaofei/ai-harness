@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1000" viewBox="0 0 1080 1000" role="img" aria-labelledby="title desc"><title id="title">模型接入在整个Agent中的位置</title><desc id="desc">应用选择服务并注入模型函数，运行内核使用项目消息，模型包转换服务协议，工具保持不变。</desc><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/></marker></defs><rect width="1080" height="1000" fill="#f8fafc"/><g font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif" fill="#0f172a">
+<text x="40" y="48" font-size="29" font-weight="700">换模型接入，保留决策、执行与反馈的循环</text>
+<text x="40" y="86" font-size="19">当前实现：两个任务都可选择接入；本地固定响应与真实服务分别验证。</text>
+<rect x="40" y="116" width="1000" height="120" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="60" y="152" font-size="23" font-weight="700">应用：examples/shared/model.ts</text>
+<text x="60" y="190" font-size="20">选择 provider，取对应 API Key 与 model；创建固定配置的 ModelCall。</text>
+<text x="60" y="222" font-size="20">代码审查与发布调查继续通过原入口启动，不把凭据放进 Context。</text>
+<path d="M 280 236 L 280 284" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 800 236 L 800 284" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="288" width="450" height="222" rx="14" fill="#f0fdf4" stroke="#818cf8" stroke-width="1.5"/>
+<text x="60" y="324" font-size="23" font-weight="700">原 Runtime（不改实现）</text>
+<text x="60" y="362" font-size="20">持有项目 messages</text>
+<text x="60" y="394" font-size="20">await callModel(Context)</text>
+<text x="60" y="426" font-size="20">保存 AssistantMessage</text>
+<text x="60" y="458" font-size="20">执行工具、保存结果、决定继续</text>
+<rect x="590" y="288" width="450" height="222" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="610" y="324" font-size="23" font-weight="700">model：公开 complete（本章）</text>
+<text x="610" y="362" font-size="20">检查配置 → 按 provider 分发</text>
+<text x="610" y="394" font-size="20">同一 Context 输入</text>
+<text x="610" y="426" font-size="20">统一 AssistantMessage 输出</text>
+<text x="610" y="458" font-size="20">不替 Runtime 保存历史</text>
+<path d="M 493 374 L 586 374" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+<text x="500" y="348" font-size="15">调用 / 返回</text>
+<path d="M 260 510 L 260 560" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+<rect x="40" y="564" width="450" height="150" rx="14" fill="#f0fdf4" stroke="#818cf8" stroke-width="1.5"/>
+<text x="60" y="600" font-size="23" font-weight="700">原工具（不改实现）</text>
+<text x="60" y="638" font-size="20">read_file 或查询工具实际执行</text>
+<text x="60" y="670" font-size="20">不认识 DeepSeek / Anthropic</text>
+<text x="60" y="702" font-size="20">结果仍关联原 toolCallId</text>
+<path d="M 800 510 L 800 540 L 675 540 L 675 560" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 800 540 L 925 540 L 925 560" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="550" y="564" width="245" height="145" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="570" y="600" font-size="23" font-weight="700">DeepSeek</text>
+<text x="570" y="638" font-size="20">messages / tool</text>
+<text x="570" y="670" font-size="20">function.arguments</text>
+<rect x="815" y="564" width="225" height="145" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="835" y="600" font-size="23" font-weight="700">Anthropic</text>
+<text x="835" y="638" font-size="20">内容块 / user</text>
+<text x="835" y="670" font-size="20">tool_use / result</text>
+<path d="M 675 709 L 675 762" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 925 709 L 925 762" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="550" y="766" width="490" height="145" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="570" y="802" font-size="23" font-weight="700">HTTP 传输</text>
+<text x="570" y="840" font-size="20">默认 fetch：请求所选模型服务</text>
+<text x="570" y="872" font-size="20">本地 fetch：固定样本，不访问网络</text>
+<text x="570" y="904" font-size="20">两者都经过适配器编码与解码</text>
+<text x="40" y="952" font-size="19">图中双向箭头表示调用与返回；每次运行只选择一家，不是同时请求两家服务。</text>
+</g></svg>

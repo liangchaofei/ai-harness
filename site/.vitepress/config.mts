@@ -25,6 +25,10 @@ export default defineConfig({
         { text: '04 让 Runtime 自动继续与停止', link: '/guide/04-agent-loop' },
         { text: '05 换任务，检验同一个运行内核', link: '/guide/05-runtime-reuse' },
       ] },
+      { text: '第二阶段 · 接入、观察与控制', items: [
+        { text: '06 模型适配：换服务，保留同一个 Runtime', link: '/guide/06-model-providers' },
+        { text: '07 工具准入与可判断的失败', link: '/guide/07-tool-contracts' },
+      ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },
     docFooter: { prev: '上一篇', next: '下一篇' },
