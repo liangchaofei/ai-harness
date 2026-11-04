@@ -1,4 +1,5 @@
-// 【修改】共用检查移入公开调用入口；这里保留 DeepSeek 协议。
+// 【修改】HTTP 失败统一归类，服务消息编解码仍分别保留。
+import { requestJson } from './shared/request-json';
 // 继续负责请求，将响应转换交给同目录的解码模块。
 import type { AssistantMessage } from '../types/messages';
 import type { Context } from '../types/context';
@@ -15,7 +16,7 @@ export async function completeDeepSeek(context: Context, options: ResolvedComple
   const messages = context.systemPrompt === undefined
     ? history
     : [{ role: 'system', content: context.systemPrompt }, ...history];
-  const response = await (options.fetch ?? globalThis.fetch)('https://api.deepseek.com/chat/completions', {
+  const value = await requestJson('https://api.deepseek.com/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -35,10 +36,7 @@ export async function completeDeepSeek(context: Context, options: ResolvedComple
     }),
     // 只限制本次HTTP等待；整次Agent的预算由后续Runtime负责。
     signal: AbortSignal.timeout(30_000),
-  });
+  }, options.fetch ?? globalThis.fetch);
 
-  // 不把服务错误正文或带凭据的请求对象直接打印到终端。
-  if (!response.ok) throw new Error(`模型服务请求失败（HTTP ${response.status}）。`);
-  const value: unknown = await response.json();
   return decodeMessage(value);
 }

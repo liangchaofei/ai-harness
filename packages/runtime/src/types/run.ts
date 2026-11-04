@@ -1,6 +1,8 @@
-// 【新增文件】一次运行的配置与停止结果。
+// 【修改】failed 新增必填 failure，error 仍仅供本地调试。
+// 一次运行的配置与停止结果。
 import type { AssistantMessage, Message } from '@ai-harness/model';
 import type { ModelCall } from './model-call';
+import type { RunFailure } from './failures';
 import type { ExecutableTool } from './tools';
 
 /** 应用创建运行配置；任务与模型连接不写入通用循环。 */
@@ -19,7 +21,7 @@ export interface RunAgentOptions {
 
 /** 各种停止结果共用的运行记录，由 Runtime 创建并交给应用读取。 */
 interface RunRecord {
-  /** 已保存的初始消息、模型响应与完整批次结果；只在内存中。 */
+  /** 已保存的初始消息、模型响应和工具结果；未知批次异常时含此前已完成项，只在内存中。 */
   messages: readonly Message[];
   /** 实际发起的模型调用次数，不是工具次数或消息条数。 */
   modelCalls: number;
@@ -31,5 +33,5 @@ export type RunResult = RunRecord & (
   // callLimit 最后一次仍请求工具；truncated 输出截断；emptyAnswer 正常停止但无文本。
   | { status: 'callLimit' | 'truncated' | 'emptyAnswer' }
   // 未知异常不作为工具反馈；保留原异常仅供本地调试，不能直接打印整个结果。
-  | { status: 'failed'; phase: 'model' | 'tools'; error: unknown }
+  | { status: 'failed'; phase: 'model' | 'tools'; failure: RunFailure; error: unknown }
 );

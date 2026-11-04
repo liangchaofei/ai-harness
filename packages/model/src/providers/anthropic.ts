@@ -1,4 +1,5 @@
-// 【新增文件】Anthropic Messages API 的非流式文本与工具接入。
+// 【修改】HTTP 失败统一归类，服务消息编解码仍分别保留。
+import { requestJson } from './shared/request-json';
 import type { Context } from '../types/context';
 import type { AssistantMessage } from '../types/messages';
 import type { ResolvedCompleteOptions } from '../types/options';
@@ -9,7 +10,7 @@ import { decodeAnthropicMessage } from './anthropic-response';
 export async function completeAnthropic(
   context: Context, options: ResolvedCompleteOptions,
 ): Promise<AssistantMessage> {
-  const response = await (options.fetch ?? globalThis.fetch)('https://api.anthropic.com/v1/messages', {
+  const value = await requestJson('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -29,10 +30,7 @@ export async function completeAnthropic(
       max_tokens: options.maxTokens,
     }),
     signal: AbortSignal.timeout(30_000),
-  });
+  }, options.fetch ?? globalThis.fetch);
 
-  // 不输出请求头和服务错误正文，沿用应用已有的受控异常展示。
-  if (!response.ok) throw new Error(`模型服务请求失败（HTTP ${response.status}）。`);
-  const value: unknown = await response.json();
   return decodeAnthropicMessage(value);
 }

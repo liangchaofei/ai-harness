@@ -1,4 +1,3 @@
-// 【新增文件】共用运行记录展示，不规定任务的接受条件。
 import type { RunResult } from '@ai-harness/runtime';
 
 /** 只展示允许的异常标识；原异常留在 result.error 中供本地断点查看。 */
@@ -26,6 +25,8 @@ export function printRun(result: RunResult): void {
   }
   console.log('运行停止：', result.status, '模型调用次数：', result.modelCalls);
   if (result.status === 'failed') {
+    // 【新增】展示框架生成的稳定代码和说明，不打印 result.error 或 cause。
+    console.error('失败代码：', result.failure.code, '失败说明：', result.failure.message);
     console.error('异常阶段：', result.phase, '异常标识：', describeFailure(result.error));
   }
 }
