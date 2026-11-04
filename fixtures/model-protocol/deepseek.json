@@ -1,0 +1,34 @@
+[
+  {
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "message": {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "call_read_01",
+              "type": "function",
+              "function": {
+                "name": "read_file",
+                "arguments": "{\"path\":\"src/cart.ts\"}"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "message": {
+          "role": "assistant",
+          "content": "【固定响应】total 未乘 quantity：单价 10、数量 3 应为 30。此文字预先写好，不是模型判断。"
+        }
+      }
+    ]
+  }
+]
