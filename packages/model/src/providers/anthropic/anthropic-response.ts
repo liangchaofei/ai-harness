@@ -1,7 +1,7 @@
 // 【新增文件】把服务响应转换为 Runtime 已认识的 AssistantMessage。
-import type { AssistantMessage } from '../types/messages';
-import type { ToolCall } from '../types/tools';
-import { isRecord } from '../validation';
+import type { AssistantMessage } from '../../types/messages';
+import type { ToolCall } from '../../types/tools';
+import { isRecord } from '../../validation';
 
 /** completeAnthropic 传入 response.json() 的未知值；不执行或保存请求。 */
 export function decodeAnthropicMessage(value: unknown): AssistantMessage {

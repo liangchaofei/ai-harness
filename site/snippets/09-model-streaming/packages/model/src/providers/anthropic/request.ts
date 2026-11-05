@@ -1,16 +1,11 @@
-// 【修改】HTTP 失败统一归类，服务消息编解码仍分别保留。
-import { requestJson } from './shared/request-json';
-import type { Context } from '../types/context';
-import type { AssistantMessage } from '../types/messages';
-import type { ResolvedCompleteOptions } from '../types/options';
+// 【新增文件】完整与流式调用共用该服务的编码、请求头和单请求时限。
+import type { Context } from '../../types/context';
+import type { ResolvedCompleteOptions } from '../../types/options';
 import { encodeAnthropicMessages } from './anthropic-messages';
-import { decodeAnthropicMessage } from './anthropic-response';
 
-/** 公开 complete 分发到这里；只取得一次服务响应，循环仍由 Runtime 驱动。 */
-export async function completeAnthropic(
-  context: Context, options: ResolvedCompleteOptions,
-): Promise<AssistantMessage> {
-  const value = await requestJson('https://api.anthropic.com/v1/messages', {
+/** 同一上下文只改变 stream 开关，不维护两份服务请求规则。 */
+export function createAnthropicRequest(context: Context, options: ResolvedCompleteOptions, streaming: boolean): RequestInit {
+  return {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -24,13 +19,11 @@ export async function completeAnthropic(
       tools: context.tools?.length ? context.tools.map((tool) => ({
         name: tool.name, description: tool.description, input_schema: tool.parameters,
       })) : undefined,
-      stream: false,
+      stream: streaming,
       // 当前公共消息没有思考块；选用支持关闭思考的模型，例如 claude-haiku-5-5。
       thinking: { type: 'disabled' },
       max_tokens: options.maxTokens,
     }),
     signal: AbortSignal.timeout(30_000),
-  }, options.fetch ?? globalThis.fetch);
-
-  return decodeAnthropicMessage(value);
+  };
 }

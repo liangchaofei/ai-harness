@@ -1,0 +1,9 @@
+data: {"choices":[{"index":0,"delta":{"role":"assistant","content":"【固定响应】"},"finish_reason":null}]}
+
+data: {"choices":[{"index":0,"delta":{"content":"已收到源码。"},"finish_reason":null}]}
+
+data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+data: [DONE]
+
+: fixed sample end

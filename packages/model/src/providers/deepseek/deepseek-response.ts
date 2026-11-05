@@ -1,7 +1,7 @@
 // 【新增文件】从DeepSeek响应中取得文本和工具请求，不执行任何工具。
-import type { AssistantMessage } from '../types/messages';
-import type { ToolCall } from '../types/tools';
-import { isRecord } from '../validation';
+import type { AssistantMessage } from '../../types/messages';
+import type { ToolCall } from '../../types/tools';
+import { isRecord } from '../../validation';
 
 
 /** 保留每项请求的身份与原始参数，只检查本篇支持的协议形状。 */

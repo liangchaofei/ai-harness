@@ -1,5 +1,6 @@
-// 【修改】应用选择提供商，并读取这家服务自己的配置。
-import { complete, type CompleteOptions } from '@ai-harness/model';
+import type { CompleteOptions } from '@ai-harness/model';
+// 【新增】复用模型流到 Runtime 单次调用的连接。
+import { createStreamingModelCall } from './stream-model';
 import type { ModelCall } from '@ai-harness/runtime';
 
 /** 两个示例共用；创建本次运行固定使用的模型调用函数。 */
@@ -19,5 +20,6 @@ export function createModelCall(): ModelCall {
     model: process.env.ANTHROPIC_MODEL?.trim() || 'claude-haiku-5-5',
     maxTokens: 256,
   };
-  return (context) => complete(context, options);
+  // 【修改】两种真实入口及本地观察共用流消费接线。
+  return createStreamingModelCall(options);
 }
