@@ -14,7 +14,7 @@
 | 11 整次时限与运行预算 | 整次任务有期限，与单次HTTP等待、调用次数分别归属；明确停止原因 | 单次没超时但整次到期；预算耗尽不再执行新动作；保留已有事实 | 不通过无限加次数解决收敛；成本精确核算后续深化 |
 | 12 阶段联调：可观察地控制同一内核 | 使用新材料与故障组合复用两个入口，检查接入/事件/流式/取消/预算协作 | 定位一条失败，说明状态与停止证据；包外消费；模型证据与固定响应分开 | 进入第三阶段有限工作区修改/验证与CLI |
 
-06–10已提供正文与候选；11之后的接口尚未定稿。遇到理解负担先调整实现切口和讲解，不按文件名机械拆章，也不删减阶段成果。普通接线与命名由作者决定，重要范围改变再说明。
+06–11已提供正文与候选；12的联调材料与接口组合尚未定稿。遇到理解负担先调整实现切口和讲解，不按文件名机械拆章，也不删减阶段成果。普通接线与命名由作者决定，重要范围改变再说明。
 
 ## 06当前设计与验证边界
 
@@ -46,3 +46,9 @@ model.stream产出文字增量和唯一done，保留非流式complete。两服�
 应用持有AbortController，RunAgentOptions.signal沿ModelCall第三参数、stream配置、组合HTTP信号传递；工具execute第二参数signal可选。Runtime等待协作退出，检查迟到返回，cancelled与failed/answered区分。ToolBatchCancelled只带此前结果，未执行/取消项不造toolResult。模型/工具通知与开始动作之间也检查；model_start观察期间取消不增加实际调用次数；终止故障已选定及run_end观察期间不改原因。
 
 原文件工具在有界读取间检查，finally关闭；两个入口SIGINT转换与finally移除监听。无Key固定HTTP/决策只验证控制路径；忽略信号或观察函数永不返回仍会阻塞，无回滚/强杀/恢复。11复用这条链区分期限，不能把HTTP30秒或本地演示20ms当整次期限。
+
+## 11当前交付边界
+
+timeoutMs可选整数1..2147483647，整次控制由control/run-control负责；首个记录停止原因固定；边界performance.now刷新与一次timer并用，选定停止后清理，run_end不算任务期限。maxToolCalls可选非负安全整数；Runtime持有toolCalls，单项处理前扣额度，含坏参数/未知工具/开始通知后取消，超额项不扣、不发tool_start。跨批累计、exact-cap后仍能模型回答；原最终一轮callLimit规则保留。timedOut/toolLimit与cancelled/failed分别返回，已完成结果保留，无当前或剩余项伪造反馈。
+
+内部executeToolBatch改options对象，公开executeTools及ModelCall/工具signal契约保留；模型/coding-tools不改。两任务60s/8项只是初始任务策略，阶段12按新材料检查；非费用/token预算、非硬期限/强杀/恢复。固定决策、原生本地HTTP、包外消费与学习者自主表现分别取证。
