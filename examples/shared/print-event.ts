@@ -12,12 +12,19 @@ export function printEvent(event: RunEvent): void {
     case 'model_start':
       logLine(label, `模型调用 ${event.modelCall}：即将开始等待`);
       break;
-    // 【新增】每片单独显示，保留调用身份，不把片段说成完整回答。
+    // 每片单独显示，保留调用身份，不把片段说成完整回答。
     case 'model_text_delta':
       logLine(label, `文字预览：${JSON.stringify(event.text)}`);
       break;
     case 'model_end':
       logLine(label, `模型调用 ${event.modelCall}：完整响应到达 · ${event.stopReason} · 请求工具 ${event.toolCallCount} 项`);
+      break;
+    // 【新增】主动停止与故障分开显示，不打印取消原因对象。
+    case 'model_cancelled':
+      logLine(label, `模型调用 ${event.modelCall}：因取消停止，未保存迟到响应`);
+      break;
+    case 'tool_cancelled':
+      logLine(label, `${event.toolName} / ${event.toolCallId}：因取消停止，本项未形成反馈`);
       break;
     case 'model_failed':
       logLine(label, `模型调用 ${event.modelCall}：失败 · ${event.code}`);

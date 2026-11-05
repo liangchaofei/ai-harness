@@ -13,6 +13,8 @@ interface ToolIdentity {
 /** 执行器创建单项处理通知；runAgent 补上所属模型调用次数。仅包内使用。 */
 export type ToolEventData = ToolIdentity & (
   | { type: 'tool_start' }
+  // 【新增】本项因取消停止；不声称已经执行或已经回滚。
+  | { type: 'tool_cancelled' }
   | {
       type: 'tool_end';
       /** true 为已形成失败反馈；false 为成功结果，尚不代表整批已写入循环历史。 */
@@ -28,7 +30,9 @@ export type ToolEventData = ToolIdentity & (
 /** Runtime 各边界提供的摘要；事件派发器另补运行身份与顺序号。仅包内使用。 */
 export type RunEventData =
   | { type: 'run_start' }
-  // 【新增】预览不作为消息写入，流失败后也不能当作最终回答。
+  // 【新增】等待中取消或完整响应被丢弃；不产生 model_end。
+  | { type: 'model_cancelled'; modelCall: number }
+  // 预览不作为消息写入，流失败后也不能当作最终回答。
   | {
       type: 'model_text_delta';
       /** 当前模型调用序号，复用同一次调用而非发起新调用。 */
@@ -38,7 +42,7 @@ export type RunEventData =
     }
   | {
       type: 'model_start';
-      /** 即将开始的模型调用序号，从 1 开始；不是工具次数。 */
+      /** 即将开始的模型调用序号，从 1 开始；若观察期间取消，实际调用尚未计数。 */
       modelCall: number;
     }
   | {
@@ -64,7 +68,7 @@ export type RunEventData =
   | {
       type: 'run_end';
       /** 与随后返回的 RunResult.status 一致，answered 也不保证答案正确。 */
-      status: 'answered' | 'callLimit' | 'truncated' | 'emptyAnswer' | 'failed';
+      status: 'answered' | 'callLimit' | 'truncated' | 'emptyAnswer' | 'failed' | 'cancelled';
       /** 本次实际发起的模型调用总数。 */
       modelCalls: number;
       /** 仅 status 为 failed 时有值；没有值不表示任务验收通过。 */
