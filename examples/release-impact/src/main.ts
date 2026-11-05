@@ -1,5 +1,6 @@
-// 【新增文件】第二个独立任务，通过原有公开入口复用 Runtime。
 import { runAgent } from '@ai-harness/runtime';
+// 【新增】两个任务使用同一事件接口，不复制执行循环。
+import { printEvent } from '../../shared/print-event';
 import { createModelCall } from '../../shared/model';
 import { createReleaseTools } from './tools';
 import { reportRun } from './report-run';
@@ -17,6 +18,8 @@ try {
     tools,
     callModel: createModelCall(),
     maxModelCalls: 6,
+    // 【新增】传入函数引用，Runtime 在动作边界调用它。
+    onEvent: printEvent,
   });
   if (!reportRun(result, releaseId, serviceIds)) process.exitCode = 1;
 } catch {

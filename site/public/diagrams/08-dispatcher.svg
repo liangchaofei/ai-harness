@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="790" viewBox="0 0 1080 790" role="img" aria-labelledby="title desc">
+<title id="title">一条事件怎样到达应用</title><desc id="desc">createRunEvents 每次运行创建一份；所有动作边界共用本次 emit。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/></marker></defs>
+<rect width="1080" height="790" fill="#f8fafc"/>
+<g font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif" fill="#0f172a">
+<text x="40" y="48" font-size="28" font-weight="700">一条事件怎样到达应用</text>
+<text x="40" y="86" font-size="19" fill="#475569">createRunEvents 每次运行创建一份；所有动作边界共用本次 emit。</text>
+<rect x="40" y="118" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="152" font-size="23" font-weight="700">调用处提供本次摘要</text>
+<text x="62" y="185" font-size="20">例：{ type: model_start, modelCall: 1 }。</text>
+<text x="62" y="215" font-size="20">这里只描述刚发生的边界，不传消息历史或工具执行函数。</text>
+<path d="M 540 247 L 540 264" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="268" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="302" font-size="23" font-weight="700">派发器补齐身份并冻结通知</text>
+<text x="62" y="335" font-size="20">同一个 runId；sequence 从 1 递增。</text>
+<text x="62" y="365" font-size="20">Object.freeze 保护原始值字段，事件不会持有可修改的运行状态。</text>
+<path d="M 540 397 L 540 414" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="418" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="452" font-size="23" font-weight="700">await listener?.(event)</text>
+<text x="62" y="485" font-size="20">有 onEvent：调用应用并等待；没有则直接继续。</text>
+<text x="62" y="515" font-size="20">打印成功 → 返回；抛错或拒绝 → observerErrors 加 1 后返回。</text>
+<path d="M 540 547 L 540 564" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="568" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="602" font-size="23" font-weight="700">调用处继续原来的流程</text>
+<text x="62" y="635" font-size="20">开始事件之后才进入模型等待或请求检查。</text>
+<text x="62" y="665" font-size="20">结束事件之后继续处理下一项；观察失败不会要求重做动作。</text>
+<text x="40" y="738" font-size="18" fill="#475569">边界：慢观察函数拖慢执行；永不返回会阻塞。本篇没有后台队列和超时隔离。</text></g></svg>
