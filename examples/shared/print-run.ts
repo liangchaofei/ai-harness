@@ -24,8 +24,10 @@ export function printRun(result: RunResult): void {
     }
   }
   console.log('运行停止：', result.status, '模型调用次数：', result.modelCalls);
+  // 【新增】停止后对齐同一次运行，并单独报告展示侧故障。
+  console.log('运行 ID（runId）：', result.runId, '观察失败数（observerErrors）：', result.observerErrors);
   if (result.status === 'failed') {
-    // 【新增】展示框架生成的稳定代码和说明，不打印 result.error 或 cause。
+    // 展示框架生成的稳定代码和说明，不打印 result.error 或 cause。
     console.error('失败代码：', result.failure.code, '失败说明：', result.failure.message);
     console.error('异常阶段：', result.phase, '异常标识：', describeFailure(result.error));
   }

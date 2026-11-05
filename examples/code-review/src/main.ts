@@ -1,6 +1,7 @@
 // 应用只组装模型接入、任务与工具，由 Runtime 自动推进。
-// 【修改】模型连接配置由两个示例共用，运行仍使用原公开入口。
 import { runAgent } from '@ai-harness/runtime';
+// 【新增】两个任务使用同一事件接口，不复制执行循环。
+import { printEvent } from '../../shared/print-event';
 import { createModelCall } from '../../shared/model';
 import { reviewTools } from './tools';
 import { reportRun } from './report-run';
@@ -9,7 +10,6 @@ const reviewPath = 'src/cart.ts';
 const prompt = process.argv[2] ?? `请审查${reviewPath}：先读取源码，再指出一个会影响计算结果的问题，并给出具体输入和正确结果。`;
 
 
-// 【修改】取得同样的调用能力；任务、工具和接受条件保持独立。
 const callModel = createModelCall();
 
 try {
@@ -19,6 +19,8 @@ try {
     tools: reviewTools,
     callModel,
     maxModelCalls: 6,
+    // 【新增】传入函数引用，Runtime 在动作边界调用它。
+    onEvent: printEvent,
   });
   // 不再手动追加消息或写两次 complete；读取 Runtime 的结果进行展示。
   if (!reportRun(result, reviewPath)) process.exitCode = 1;

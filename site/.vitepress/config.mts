@@ -28,6 +28,7 @@ export default defineConfig({
       { text: '第二阶段 · 接入、观察与控制', items: [
         { text: '06 模型适配：换服务，保留同一个 Runtime', link: '/guide/06-model-providers' },
         { text: '07 工具准入与可判断的失败', link: '/guide/07-tool-contracts' },
+        { text: '08 运行事件与实时进度', link: '/guide/08-runtime-events' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },
