@@ -1,4 +1,4 @@
-// 【新增文件】Runtime 发出的动作摘要；应用接收，不参与模型消息协议。
+// Runtime 发出的动作摘要；应用接收，不参与模型消息协议。
 import type { AssistantMessage } from '@ai-harness/model';
 import type { RunFailureCode } from './failures';
 
@@ -28,6 +28,14 @@ export type ToolEventData = ToolIdentity & (
 /** Runtime 各边界提供的摘要；事件派发器另补运行身份与顺序号。仅包内使用。 */
 export type RunEventData =
   | { type: 'run_start' }
+  // 【新增】预览不作为消息写入，流失败后也不能当作最终回答。
+  | {
+      type: 'model_text_delta';
+      /** 当前模型调用序号，复用同一次调用而非发起新调用。 */
+      modelCall: number;
+      /** 本次新增文字；应用可以展示，不能据此执行工具。 */
+      text: string;
+    }
   | {
       type: 'model_start';
       /** 即将开始的模型调用序号，从 1 开始；不是工具次数。 */
@@ -63,7 +71,7 @@ export type RunEventData =
       failureCode?: RunFailureCode;
     };
 
-/** Runtime 创建，应用观察；只含原始值，不附参数、正文、历史或原始异常。 */
+/** Runtime 创建，应用观察；只含原始值；文字片段仅作预览，不附参数、历史或原始异常。 */
 export type RunEvent = Readonly<RunEventData & {
   /** 同一次 runAgent 的关联身份；不同运行不共用，由 Runtime 生成。 */
   runId: string;

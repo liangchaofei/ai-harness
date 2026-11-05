@@ -3,8 +3,8 @@ import type { Context } from './types/context';
 import type { AssistantMessage } from './types/messages';
 import type { CompleteOptions, ResolvedCompleteOptions } from './types/options';
 import { resolveOptions } from './request-options';
-import { completeDeepSeek } from './providers/deepseek';
-import { completeAnthropic } from './providers/anthropic';
+import { completeDeepSeek } from './providers/deepseek/deepseek';
+import { completeAnthropic } from './providers/anthropic/anthropic';
 import { ModelCallError } from './errors/model-call-error';
 
 /** 仍只返回一次模型消息，不保存历史，也不在失败时自动重试。 */

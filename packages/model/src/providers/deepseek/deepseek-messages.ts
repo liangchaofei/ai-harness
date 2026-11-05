@@ -1,5 +1,5 @@
 // 【新增文件】将项目历史转换为服务能识别的消息。
-import type { Message } from '../types/messages';
+import type { Message } from '../../types/messages';
 
 /** complete 调用它创建发送用数组；不改变应用保存的记录。 */
 export function encodeMessages(messages: readonly Message[]) {

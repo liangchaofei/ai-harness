@@ -1,7 +1,7 @@
 // 【新增文件】把项目历史转换为 Anthropic 的消息块。
-import type { Message } from '../types/messages';
-import type { AnthropicMessage, AnthropicTextBlock, AnthropicToolUseBlock } from '../types/anthropic';
-import { isRecord } from '../validation';
+import type { Message } from '../../types/messages';
+import type { AnthropicMessage, AnthropicTextBlock, AnthropicToolUseBlock } from '../../types/anthropic';
+import { isRecord } from '../../validation';
 
 /** completeAnthropic 调用；创建发送用数组，原记录仍由 Runtime 保存。 */
 export function encodeAnthropicMessages(messages: readonly Message[]): AnthropicMessage[] {

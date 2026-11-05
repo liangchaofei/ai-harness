@@ -1,19 +1,14 @@
-// 【新增文件】两家适配器共用 HTTP 等待和 JSON 读取，不处理消息协议。
+// 两家适配器共用 HTTP 等待和 JSON 读取，不处理消息协议。
 import { ModelCallError } from '../../errors/model-call-error';
+// 【新增】本文件继续只负责完整 JSON 响应体。
+import { requestResponse } from './request-response';
 
 /** 适配器传入已编码请求；返回未知 JSON，再由各自解码器检查。 */
 export async function requestJson(
   url: string, init: RequestInit, fetcher: typeof globalThis.fetch,
 ): Promise<unknown> {
-  let response: Response;
-  try {
-    response = await fetcher(url, init);
-  } catch (cause) {
-    throw new ModelCallError('transport', '模型服务连接或等待失败。', { cause });
-  }
-  if (!response.ok) {
-    throw new ModelCallError('http', `模型服务请求失败（HTTP ${response.status}）。`, undefined, response.status);
-  }
+  // 【修改】与流式接入共用连接及 HTTP 检查，JSON 分类保留。
+  const response = await requestResponse(url, init, fetcher);
   try {
     return await response.json();
   } catch (cause) {

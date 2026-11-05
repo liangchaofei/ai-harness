@@ -10,6 +10,10 @@ export { complete } from './complete';
 // 公开执行反馈消息，供 Runtime 与应用共同使用。
 export type { ToolResultMessage } from './types/tool-results';
 
-// 【新增】调用方按类别判断，不读取原始服务异常正文。
+// 调用方按类别判断，不读取原始服务异常正文。
 export { ModelCallError } from './errors/model-call-error';
 export type { ModelFailureKind } from './types/failures';
+
+// 【新增】非流式 complete 保留，原生流使用独立入口。
+export { stream } from './stream';
+export type { ModelStreamEvent } from './types/stream';

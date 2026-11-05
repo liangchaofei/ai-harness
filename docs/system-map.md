@@ -1,6 +1,6 @@
 # 累计系统职责图
 
-2026-11-04：实际学习源码已含07；08为已提供候选，学习者理解、迁移与延迟复用待取证。规划和实现、作者验证分别记录。
+2026-11-04：实际学习源码已含08；09为已提供候选，学习者理解、迁移与延迟复用待取证。规划和实现、作者验证分别记录。
 
 ```text
 应用目标 / systemPrompt / 初始messages / 工具 / 接入配置
@@ -25,3 +25,5 @@ model定义模型输入输出契约，适配器认识服务协议；Runtime创�
 07已知工具失败保存为code/message文本的结果并继续；未知异常返回RunResult.failure及仅本地调试error。ToolBatchError带回已完成结果，Runtime保存后停止，不补造出错项成功记录，不执行剩余动作，也不把不完整批次直接当作可恢复历史。providers/shared只共用HTTP等待，协议编解码仍各自负责。
 
 08观察支线（候选）：runAgent的开始/模型调用/停止位置，及executeToolBatch单项处理位置 → events.emit → 本次runId与递增sequence → onEvent → 应用打印/未来界面。只传摘要原始值，不传messages可写引用。tool_end先于整批回到循环的messages.push，不能当作已保存全批。最终finish发run_end后返回RunResult，附同一runId与observerErrors。观察异常不改变停止状态或触发重试；顺序await有慢监听阻塞边界。09才接模型增量。
+
+09候选：应用ModelCall → model.stream → provider请求(stream:true) → HTTP响应头 → readSse字节/UTF8/行/帧 → 服务局部草稿。文字分片→共享stream-model→Runtime的model_text_delta→应用printEvent；完整终止→done.message→ModelCall返回→Runtime.messages.push→原工具门禁/执行/反馈。流失败没有done，预览不写历史、不执行草稿；截断只保留文本/length。非流式complete继续共用请求构造。新增职责不进入任务工具。
