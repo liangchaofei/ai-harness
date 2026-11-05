@@ -18,10 +18,15 @@ export interface RunAgentOptions {
   callModel: ModelCall;
   /** 整次运行最多发起的模型调用数，正安全整数；包括最终回答和失败的调用。 */
   maxModelCalls: number;
+  // 【新增】整次经过时长与工具处理次数分别限制，不是 token 或费用估算。
+  /** 从有效 runAgent 启动到选定停止原因的期限，1..2147483647 毫秒；省略不设整次期限。 */
+  timeoutMs?: number;
+  /** 累计可进入处理的工具请求数，非负安全整数；含坏参数/未知名称，0 表示不处理工具。省略不另设限制。 */
+  maxToolCalls?: number;
   // 不提供时仍按原循环运行。
   /** 可选观察函数；被依次等待，失败被计数；返回值不改变状态。取消须由应用另行触发 controller。 */
   onEvent?: RunEventListener;
-  // 【新增】应用持有 controller，Runtime 只读取信号。
+  // 应用持有 controller，Runtime 只读取信号。
   /** 触发后停止新动作；等待当前协作操作退出。不会强杀不响应信号的操作。 */
   signal?: AbortSignal;
 }
@@ -32,15 +37,19 @@ interface RunRecord {
   messages: readonly Message[];
   /** 实际发起的模型调用次数，不是工具次数或消息条数。 */
   modelCalls: number;
+  // 【新增】由 Runtime 在进入单项处理前累计，不等于成功结果或实际 I/O 数量。
+  /** 已开始处理的工具请求数；包括 tool_start 通知后被取消、参数被拒绝的项。 */
+  toolCalls: number;
 }
 
 /** 包内先构造的停止结果；answered 也不保证任务结论正确。 */
 export type RunOutcome = RunRecord & (
   | { status: 'answered'; answer: AssistantMessage }
-  // 【新增】主动停止，保留已有完整记录；无 answer/failure，不表示可直接恢复。
-  | { status: 'cancelled' }
-  // callLimit 最后一次仍请求工具；truncated 输出截断；emptyAnswer 正常停止但无文本。
-  | { status: 'callLimit' | 'truncated' | 'emptyAnswer' }
+  // 主动停止，保留已有完整记录；无 answer/failure，不表示可直接恢复。
+  // 【修改】到期与主动取消分别表达，均不携带答案或执行故障。
+  | { status: 'cancelled' | 'timedOut' }
+  // 【修改】callLimit 为模型上限，toolLimit 为下一项工具额度不足；其他停止含义保留。
+  | { status: 'callLimit' | 'toolLimit' | 'truncated' | 'emptyAnswer' }
   // 未知异常不作为工具反馈；保留原异常仅供本地调试，不能直接打印整个结果。
   | { status: 'failed'; phase: 'model' | 'tools'; failure: RunFailure; error: unknown }
 );

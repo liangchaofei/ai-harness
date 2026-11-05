@@ -13,7 +13,7 @@ interface ToolIdentity {
 /** 执行器创建单项处理通知；runAgent 补上所属模型调用次数。仅包内使用。 */
 export type ToolEventData = ToolIdentity & (
   | { type: 'tool_start' }
-  // 【新增】本项因取消停止；不声称已经执行或已经回滚。
+  // 【修改】本项因运行信号停止，可能主动取消或到期；原因见 run_end。
   | { type: 'tool_cancelled' }
   | {
       type: 'tool_end';
@@ -30,7 +30,7 @@ export type ToolEventData = ToolIdentity & (
 /** Runtime 各边界提供的摘要；事件派发器另补运行身份与顺序号。仅包内使用。 */
 export type RunEventData =
   | { type: 'run_start' }
-  // 【新增】等待中取消或完整响应被丢弃；不产生 model_end。
+  // 【修改】运行信号停止或迟到响应被丢弃；原因见 run_end，不产生 model_end。
   | { type: 'model_cancelled'; modelCall: number }
   // 预览不作为消息写入，流失败后也不能当作最终回答。
   | {
@@ -68,9 +68,11 @@ export type RunEventData =
   | {
       type: 'run_end';
       /** 与随后返回的 RunResult.status 一致，answered 也不保证答案正确。 */
-      status: 'answered' | 'callLimit' | 'truncated' | 'emptyAnswer' | 'failed' | 'cancelled';
+      status: 'answered' | 'callLimit' | 'truncated' | 'emptyAnswer' | 'failed' | 'cancelled' | 'timedOut' | 'toolLimit';
       /** 本次实际发起的模型调用总数。 */
       modelCalls: number;
+      // 【新增】与最终结果中的工具处理尝试数一致。
+      toolCalls: number;
       /** 仅 status 为 failed 时有值；没有值不表示任务验收通过。 */
       failureCode?: RunFailureCode;
     };

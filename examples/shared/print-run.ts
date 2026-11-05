@@ -1,4 +1,6 @@
 import type { RunResult } from '@ai-harness/runtime';
+// 应用共用终端排版，保留原有异常信息筛选。
+import { logBlock } from './terminal';
 
 /** 只展示允许的异常标识；原异常留在 result.error 中供本地断点查看。 */
 function describeFailure(error: unknown): string {
@@ -12,23 +14,36 @@ function describeFailure(error: unknown): string {
   return typeof code === 'string' && codes.has(code) ? `${name} / ${code}` : name;
 }
 
-/** 应用在运行停止后调用；只打印已有记录和受控诊断，不执行模型或工具。 */
+/** 应用在运行停止后展示记录和受控诊断，不执行模型或工具。 */
 export function printRun(result: RunResult): void {
+  // 记录分块展示，源码和回答保留实际换行，不再挤成一行 JSON。
+  logBlock('运行记录');
   let responseNumber = 0;
   for (const message of result.messages) {
     if (message.role === 'assistant') {
       responseNumber += 1;
-      console.log(`模型响应 ${responseNumber}：`, JSON.stringify(message));
+      logBlock(`模型响应 ${responseNumber} · ${message.stopReason}`, message.content || '（无文本）');
+      if (message.toolCalls.length > 0) logBlock('模型提出的工具请求', message.toolCalls);
     } else if (message.role === 'toolResult') {
-      console.log('本地工具结果：', JSON.stringify(message));
+      logBlock(`工具结果 · ${message.toolName} / ${message.toolCallId} · ${message.isError ? '失败反馈' : '成功'}`,
+        message.content);
     }
   }
-  console.log('运行停止：', result.status, '模型调用次数：', result.modelCalls);
-  // 【新增】停止后对齐同一次运行，并单独报告展示侧故障。
-  console.log('运行 ID（runId）：', result.runId, '观察失败数（observerErrors）：', result.observerErrors);
+  // 只选择需要展示的字段，不把含原始 error 的整个结果交给打印工具。
+  logBlock('运行停止', {
+    status: result.status,
+    modelCalls: result.modelCalls,
+    // 【新增】累计处理尝试数，不等于成功数。
+    toolCalls: result.toolCalls,
+    runId: result.runId,
+    observerErrors: result.observerErrors,
+  });
   if (result.status === 'failed') {
-    // 展示框架生成的稳定代码和说明，不打印 result.error 或 cause。
-    console.error('失败代码：', result.failure.code, '失败说明：', result.failure.message);
-    console.error('异常阶段：', result.phase, '异常标识：', describeFailure(result.error));
+    logBlock('运行失败', {
+      code: result.failure.code,
+      message: result.failure.message,
+      phase: result.phase,
+      diagnostic: describeFailure(result.error),
+    });
   }
 }
