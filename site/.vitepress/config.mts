@@ -30,6 +30,7 @@ export default defineConfig({
         { text: '07 工具准入与可判断的失败', link: '/guide/07-tool-contracts' },
         { text: '08 运行事件与实时进度', link: '/guide/08-runtime-events' },
         { text: '09 流式模型与完整消息', link: '/guide/09-model-streaming' },
+        { text: '10 主动取消一次运行', link: '/guide/10-run-cancellation' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },

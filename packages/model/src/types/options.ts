@@ -1,8 +1,7 @@
-// 【修改】公共调用配置增加提供商选择和可注入的 HTTP 传输。
 /** 模型包当前接入的两种服务；不等于任意兼容服务都已经支持。 */
 export type ModelProvider = 'deepseek' | 'anthropic';
 
-/** 应用传给 complete；不进入对话消息。 */
+/** 应用传给 complete 或 stream；不进入对话消息。 */
 export interface CompleteOptions {
   /** 省略时保留 DeepSeek；一次运行应固定同一个提供商。 */
   provider?: ModelProvider;
@@ -16,6 +15,9 @@ export interface CompleteOptions {
    * 此函数会接触含凭据的请求，只能由可信应用配置。
    */
   fetch?: typeof globalThis.fetch;
+  // 【新增】调用方控制本次等待，不进入服务请求正文。
+  /** 可选取消信号；与单次 HTTP 的 30 秒限制共同生效，不代表整次任务期限。 */
+  signal?: AbortSignal;
 }
 
 /** complete 校验后创建，两个适配器读取；不从包入口公开。 */

@@ -1,4 +1,4 @@
-// 【新增文件】完整与流式调用共用该服务的编码、请求头和单请求时限。
+// 完整与流式调用共用该服务的编码、请求头和单请求时限。
 import type { Context } from '../../types/context';
 import type { ResolvedCompleteOptions } from '../../types/options';
 import { encodeAnthropicMessages } from './anthropic-messages';
@@ -24,6 +24,9 @@ export function createAnthropicRequest(context: Context, options: ResolvedComple
       thinking: { type: 'disabled' },
       max_tokens: options.maxTokens,
     }),
-    signal: AbortSignal.timeout(30_000),
+    // 【修改】任一信号触发即可停止当前 HTTP；保留原单次 30 秒限制。
+    signal: options.signal
+      ? AbortSignal.any([options.signal, AbortSignal.timeout(30_000)])
+      : AbortSignal.timeout(30_000),
   };
 }
