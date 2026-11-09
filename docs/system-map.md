@@ -33,3 +33,5 @@ model定义模型输入输出契约，适配器认识服务协议；Runtime创�
 11候选：runAgent校验配置→createRunControl→同文件内runLoop持有messages/modelCalls/toolCalls；control持有独立signal、起始单调时刻、一次timer、外部监听。模型/工具仍读该signal；stopStatus边界刷新，首个记录原因固定。工具执行内部options含notify/checkStop/tryStartToolCall；计数在循环回调toolCalls+=1，拒绝超额项前无tool_start，ToolBatchLimit带回此前结果，循环push后finish(toolLimit)。期限同样复用ToolBatchCancelled并由control区分timedOut/cancelled；finish前与外层finally重复安全清理。无token费用估算/强杀/恢复。
 
 12应用组装：fixtures → createReviewTask/createReleaseTask → ExampleTask{input,report} → 原main或stage-check → 原runAgent。input只含目标/初始消息/工具；预算、模型连接、取消源由入口决定；report闭包保留应用材料要求，不接管历史。三个核心包语义沿11。固定fetch仅替网络，原生流编解码/校验/工具/保存/停止实际参与；最终预览不等于完整消息，answered不等于证据齐全，证据齐全不等于语义正确。包外main.mjs只导入三个公开入口，配置自身材料，复用反馈及取消。
+
+13：应用root → coding-tools.createWorkspaceTools → openWorkspace的files映射/paths集合/read函数 → 三个工具共享。find仅查路径；search逐文件read当前内容返回命中及截断；read_file从同一索引取文件，复查路径、有界读取并附行号。上述都是工具事实来源，不保存Agent历史；原Runtime创建toolResult、按原ID保存并带入后续Context。准备信号与每次execute运行信号分别传入。readTextFile抽自原清单读取，默认r保持兼容，workspace用O_NOFOLLOW；旧任务和发布调查继续。
