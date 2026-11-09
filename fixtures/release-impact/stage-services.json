@@ -1,0 +1,5 @@
+{
+  "quote-api": "服务 quote-api：负责人为定价组；直接依赖 pricing-core。",
+  "checkout-api": "服务 checkout-api：负责人为交易组；直接依赖 pricing-core。",
+  "pricing-core": "服务 pricing-core：负责人为平台组；本材料未列出它的直接依赖。"
+}

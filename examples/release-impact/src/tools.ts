@@ -1,12 +1,15 @@
-// 【新增文件】应用加载两类材料，并创建本次允许的查询工具。
 import { createLookupTool } from './lookup-tool';
 import { loadRecords } from './load-records';
 
 /** 应用启动时调用；加载完成后才启动 Agent，不在 Runtime 中读取领域材料。 */
-export async function createReleaseTools() {
+// 【修改】可替换材料位置；省略时仍加载原来的两份记录。
+export async function createReleaseTools(materials = {
+  releases: new URL('../../../fixtures/release-impact/releases.json', import.meta.url),
+  services: new URL('../../../fixtures/release-impact/services.json', import.meta.url),
+}) {
   const [releases, services] = await Promise.all([
-    loadRecords(new URL('../../../fixtures/release-impact/releases.json', import.meta.url)),
-    loadRecords(new URL('../../../fixtures/release-impact/services.json', import.meta.url)),
+    loadRecords(materials.releases),
+    loadRecords(materials.services),
   ]);
   return [
     createLookupTool({
