@@ -1,0 +1,4 @@
+{
+  "checkout-api": "服务 checkout-api：负责人为交易组；直接依赖 payment-gateway。",
+  "inventory-api": "服务 inventory-api：负责人为库存组；直接依赖 warehouse-sync。"
+}

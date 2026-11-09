@@ -32,6 +32,7 @@ export default defineConfig({
         { text: '09 流式模型与完整消息', link: '/guide/09-model-streaming' },
         { text: '10 主动取消一次运行', link: '/guide/10-run-cancellation' },
         { text: '11 整次时限与运行预算', link: '/guide/11-run-budgets' },
+        { text: '12 阶段联调：可观察地控制同一内核', link: '/guide/12-stage-integration' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },
