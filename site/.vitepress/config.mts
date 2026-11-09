@@ -34,6 +34,9 @@ export default defineConfig({
         { text: '11 整次时限与运行预算', link: '/guide/11-run-budgets' },
         { text: '12 阶段联调：可观察地控制同一内核', link: '/guide/12-stage-integration' },
       ] },
+      { text: '第三阶段 · 实际代码任务与交付', items: [
+        { text: '13 让 Agent 调查有限工作区', link: '/guide/13-workspace-investigation' },
+      ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },
     docFooter: { prev: '上一篇', next: '下一篇' },
