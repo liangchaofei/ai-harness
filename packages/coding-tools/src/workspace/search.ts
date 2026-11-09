@@ -1,4 +1,4 @@
-// 【新增文件】逐文件读取当前文本，返回包含字面量的行与位置。
+// 逐文件读取当前文本，返回包含字面量的行与位置。
 import type { ExecutableTool } from '@ai-harness/runtime';
 import type { Workspace } from '../types/workspace';
 import { stringArgument, stringParameters } from './arguments';
@@ -7,7 +7,8 @@ import { stringArgument, stringParameters } from './arguments';
 export function createSearchTool(workspace: Workspace): ExecutableTool {
   return {
     name: 'search_source',
-    description: '在工作区 .ts 文件内容中查找区分大小写的字面量，不支持正则；返回路径、1起始行号及预览，最多20条。',
+    // 【修改】搜索范围跟随共享工作区。
+    description: `在工作区文本中查找区分大小写的字面量，不支持正则；返回路径、1起始行号及预览，最多20条。范围：${workspace.extensions.join('、')}。`,
     parameters: stringParameters('query', '需要匹配的源码文字。', 120),
     async execute(value, signal) {
       signal?.throwIfAborted();

@@ -36,6 +36,7 @@ export default defineConfig({
       ] },
       { text: '第三阶段 · 实际代码任务与交付', items: [
         { text: '13 让 Agent 调查有限工作区', link: '/guide/13-workspace-investigation' },
+        { text: '14 修改代码，让真实验收反馈进入下一轮', link: '/guide/14-edit-check-feedback' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },
