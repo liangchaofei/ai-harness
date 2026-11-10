@@ -41,3 +41,9 @@ model定义模型输入输出契约，适配器认识服务协议；Runtime创�
 ## 15：实际变更与对应验收进入任务接受
 
 应用createRepairSession→coding-tools createCodeTaskSession；tools供Runtime顺序执行，baseline/lastCheck由同会话私有持有。run_check：清旧证据→capture(before)→原runCheck→capture(after)→保存CheckEvidence→JSON反馈→Runtime消息→模型后续动作。停止后应用inspect→重新采集current/changes→acceptRepair。模型包/Runtime不认识内容标识与金额验收；业务规则仍在examples/fixtures。恢复/隔离/原子快照仍未实现。
+
+## 16：显式计划是可选状态工具
+
+应用createRepairSession(options.planning)→runtime.createPlanSession→tool加入input.tools/read留应用。模型提出update_plan→原schema门禁→计划parse/序号检查→current替换→JSON反馈→原执行器关联ID→原循环保存→下一轮Context。应用tool_end成功→read深拷贝→printPlan。原CodeTaskSession仍独占基线/lastCheck/inspect，acceptRepair不读计划。
+
+本次未改runAgent、执行器、事件类型或model/coding-tools；计划不调度工具、不新增harness空包。计划revision与源码revision异义，前者更新序号，后者内容摘要。false-complete可answered但不接受；固定开销对照不证明模型质量。

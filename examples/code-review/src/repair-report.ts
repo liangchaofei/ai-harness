@@ -1,6 +1,8 @@
-// 【修改】从实际会话取证，展示内容差异，再按应用规则接受。
+// 从实际会话取证，展示内容差异，再按应用规则接受。
 import type { RunResult } from '@ai-harness/runtime';
 import type { RepairSession } from './types/repair-session';
+// 【新增】最后展示计划快照，接受条件仍只读实际代码与验收。
+import { printPlan } from './planning/print-plan';
 import { acceptRepair } from './repair-acceptance';
 import { printRun } from '../../shared/print-run';
 import { logBlock } from '../../shared/terminal';
@@ -13,6 +15,7 @@ function decodeOutput(text: string): unknown {
 /** runRepair等待停止后调用；取证失败抛回入口，不能当作接受成功。 */
 export async function reportRepair(session: RepairSession, result: RunResult): Promise<boolean> {
   printRun(result);
+  if (session.plan) printPlan(session.plan.read());
   // 不从result.messages提取通过记录；重新采集文件，读取私有会话的真实检查结果。
   const review = await session.codeTask.inspect();
   for (const change of review.changes) {
