@@ -6,6 +6,17 @@
 
 这里的`src/cart.ts`只是任务中的路径字符串，不需要现在创建文件。模型不会因为收到路径就获得磁盘访问能力。
 
+## 实施前，先串起本篇的实现逻辑
+
+1. **应用只给任务路径，同时声明可请求的动作。** 任务说要审查 `src/cart.ts`，工具说明说可以请求 `read_file`，参数需要一个 path。说明里没有实际读取函数，也没有源码。
+2. **模型包把任务和工具说明发送给服务。** 模型根据可见信息返回文字，或者生成工具请求。是否请求、请求哪个名称及参数，由这次模型输出决定，不是应用预先替它填写。
+3. **模型包把服务的动作数据转换成项目数据。**
+   - **3.1 保留每项请求。** 从服务响应取出请求 ID、工具名和参数文本，按顺序组成项目的请求数组；多项请求不会只剩第一项。
+   - **3.2 组合成完整模型消息。** 将文字、请求数组和停止原因一起返回。动作参数此时仍是 JSON 字符串，不是已经通过校验的本地函数参数。
+4. **应用接住一次返回，区分文本与待执行动作。** 普通回答展示文字；工具请求展示 ID、名称与参数；截断则不当作完整动作。此时不读磁盘、不保存工具结果，也不再次调用模型，实际执行接在 03 篇。
+
+因此本篇观察的是“模型提出了什么动作”，不是“文件工具执行出了什么结果”。
+
 ## 从“想读文件”到可识别的请求
 
 如果模型只回复“我需要看一下文件”，程序仍只拿到一段文字。工具调用协议让模型把动作放进专门的字段：哪个工具、给什么参数、用哪个 ID 标识这一次请求。这里说的“工具请求”就是这份动作数据，不是已经执行的函数。
@@ -112,6 +123,8 @@ packages/model/src/
 
 先新建`packages/model/src/types/tools.ts`，写入完整代码：
 
+这份类型区分发送与返回的两类数据：应用创建 ToolDefinition 说明工具用途和参数，模型包发送给服务；服务响应转换为 ToolCall，应用接住后观察模型请求的名称、ID 与参数。声明不会创建读取函数或执行动作。
+
 <<< @/snippets/02-tool-requests/packages/model/src/types/tools.ts#full
 
 `ToolDefinition.parameters`保存参数的 JSON Schema。JSON Schema 是描述 JSON 数据形状的规则，本篇只用到对象、字段类型、必填字段和额外字段限制。它会作为模型输入，帮助模型生成参数；这个接口里的`Record<string, unknown>`仅允许保存规则对象，没有替程序验证规则或参数。
@@ -124,6 +137,8 @@ packages/model/src/
 
 **完整替换已有的`packages/model/src/types/messages.ts`**。新增`./tools`的类型导入；`Message`不变，只扩展`AssistantMessage`。`AssistantMessage`保留`role/content`，为`stopReason`增加`toolUse`，并新增始终存在的`toolCalls`数组。下面是替换后的完整文件：
 
+这份消息契约让一次模型返回可以同时携带文字和全部工具请求。响应转换函数创建 AssistantMessage，应用根据停止原因决定展示文本还是待执行动作；类型不会替应用保存这条响应。
+
 <<< @/snippets/02-tool-requests/packages/model/src/types/messages.ts#full
 
 纯文本结果的`toolCalls`为`[]`，工具响应则包含一项或多项。`toolUse`只表示模型提出动作；`length`表示输出被截断，即使已有部分请求，也不能当完整动作接受。收到文本和收到动作，是两种需要分别处理的结果。
@@ -133,6 +148,8 @@ packages/model/src/
 ### 在上下文中提供工具说明
 
 **完整替换已有的`packages/model/src/types/context.ts`**。保留原来的`Message`导入、`systemPrompt`和`messages`字段；新增`ToolDefinition`导入和可选的`tools`字段。下面是替换后的完整文件：
+
+Context 约定应用怎样把任务和工具说明一起交给 complete。新增 tools 让请求函数知道本次可以向模型介绍哪些动作；它是发送说明的输入，不是待执行请求列表。
 
 <<< @/snippets/02-tool-requests/packages/model/src/types/context.ts#full
 
@@ -169,6 +186,8 @@ import { isRecord } from '../validation';
 
 在同一文件末尾追加完整`decodeMessage`：
 
+这段 decodeMessage 负责把一次服务响应组合成完整项目消息。它接收解析后的响应，检查停止原因、取出文本，再调用上面的请求转换函数取得 toolCalls；返回值交给 complete，再由应用接住。本次仍没有本地工具执行。
+
 <<< @/snippets/02-tool-requests/packages/model/src/providers/deepseek-response.ts#message
 
 继续跟踪开头的完整响应：这里的`value`来自`response.json()`，是含`choices`的整个 JSON 对象。`choice`接住`choices[0]`，`reason`得到`tool_calls`，局部变量`message`接住服务中的 assistant 对象，它仍使用`tool_calls`字段。
@@ -198,6 +217,8 @@ import { isRecord } from '../validation';
 现在让`complete`使用刚才的解码函数，并发送工具说明。
 
 **完整替换`packages/model/src/providers/deepseek.ts`**：删除旧的本地`decodeMessage`和不再使用的`isRecord`导入，保留导出函数`complete`；保留 01 的三个类型导入，新增`./deepseek-response`导入和请求正文的`tools`转换。下面是替换后的完整文件：
+
+下面的 complete 仍替应用完成一次 HTTP 往返，但发送时多带工具说明，返回时可以取得工具请求。输入是 Context 与调用配置，返回统一的 AssistantMessage；应用后面用它区分普通回答、动作请求和截断。
 
 <<< @/snippets/02-tool-requests/packages/model/src/providers/deepseek.ts#full
 
@@ -230,6 +251,8 @@ HTTP 状态成功后，`await response.json()`读取、解析正文，完整原�
 
 接着完整替换`packages/model/src/index.ts`，保留`complete`导出，并增加`ToolDefinition/ToolCall`类型导出：
 
+包入口让示例从 @ai-harness/model 取得 complete、ToolDefinition 和 ToolCall。它只公开这些能力与类型，导入入口不会自行发送请求。
+
 <<< @/snippets/02-tool-requests/packages/model/src/index.ts#full
 
 应用仍从`@ai-harness/model`导入，包名和既有公共类型名称不变。模型包内部继续从`types/`下的具体文件导入类型。
@@ -247,6 +270,8 @@ npm run build
 
 模型包已经能传递动作说明和请求，示例需要提供具体工具。新建`examples/code-review/src/tools.ts`，写入完整代码：
 
+这份代码创建 reviewTools，告诉模型“可以请求读取一个项目相对路径”。应用把该数组放进 Context.tools，模型包再编码发送；数组只有说明和参数规则，没有实际读取实现。
+
 <<< @/snippets/02-tool-requests/examples/code-review/src/tools.ts#full
 
 `reviewTools`是应用实际创建的数组值，里面的`read_file`名称和参数规则来自这段代码。模型不会自己发明这份说明；应用稍后把数组赋给`context.tools`，`complete`再把它转换为 HTTP 正文的`tools`。
@@ -258,6 +283,8 @@ npm run build
 这一步只定义了工具说明，没有实现`read_file`函数。本篇任务路径不要求真实存在；实际读取的函数、允许范围和错误结果会在下一篇实现。
 
 完整替换`examples/code-review/src/main.ts`：保留环境配置、一次`complete`调用和异常处理；导入`reviewTools`加入上下文，把原来的单一文本判断改为截断、工具请求、文本三条分支：
+
+这个入口组装本次审查目标与 reviewTools，调用一次 complete，接住消息后打印文本或逐项展示待执行请求。它让我们看见模型选择了什么，但不处理文件读取、工具反馈或下一轮。
 
 <<< @/snippets/02-tool-requests/examples/code-review/src/main.ts#full
 

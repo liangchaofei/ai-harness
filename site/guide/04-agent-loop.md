@@ -14,7 +14,15 @@
 
 任务仍是审查 `src/cart.ts`。应用把这个模型可见名称映射到上面的实际文件；工具读取文本，不导入执行 `total`。可以用单价 10、数量 3 应得 30 这一输入检查回答是否指出遗漏数量的问题。
 
-03 已经把“拿到请求→执行→保存结果→再次请求”明确写了一遍。现在只需要把同一段规则重复应用，而不预先规定一定第二次就回答。例如下面是一种可能轨迹：
+本篇把应用手写的衔接交给 Runtime，整体按下面的顺序运行：
+
+1. **应用准备一次运行。** 提供初始任务、工具、调用上限和一个会请求模型的函数；服务配置留在应用与模型包，循环不用认识密钥或服务地址。
+2. **Runtime 建立自己持有的历史。** 从初始消息开始，每次把当前历史交给模型函数，等待一条完整模型消息，再保存这条响应。
+3. **根据响应继续或停止。** 有工具请求，就调用原执行器；执行器返回真实结果后，由 Runtime 追加到历史，再带着更新后的内容进入下一轮。只有文字时，按停止原因和内容选取返回分支。
+4. **限制和异常同样有明确出口。** 达到模型调用上限，不再请求；未知异常返回失败。已经发生的工具动作不会因停止自动回滚。
+5. **应用只接住一次最终结果。** 结果带历史、调用次数和停止状态；应用展示记录、检查成功读取证据，再人工核对具体结论。循环返回文本不等于任务质量已通过。
+
+这些步骤不预先规定模型第二次就回答。例如下面是一种可能轨迹：
 
 | 模型调用 | 输入中的记录数 | 模型响应 | 本地下一步 |
 |---|---:|---|---|
@@ -76,6 +84,8 @@ Runtime 需要“传入本次上下文，得到一条模型响应”，不需要
 ### 配置和停止结果
 
 新建 `packages/runtime/src/types/run.ts`。配置由应用提供，实际运行结果由 Runtime 创建；不是在这个类型文件中执行循环。
+
+这些类型约定一次运行的输入和停止后的输出：应用创建选项，Runtime 创建带历史和调用次数的结果，报告按 status 选择展示分支。它们描述运行数据，不会自行执行循环或判断审查结论。
 
 <<< @/snippets/04-agent-loop/packages/runtime/src/types/run.ts
 
@@ -148,6 +158,8 @@ messages.push(...results);
 ## 第三步：导出并先检查循环
 
 **完整替换 `packages/runtime/src/index.ts`**：保留 `ExecutableTool/ToolExecutionError/executeTools` 导出，新增 `ModelCall/RunAgentOptions/RunResult/runAgent` 导出。
+
+这个公开入口把自动运行函数和相关类型交给应用，同时保留原工具执行能力。调用方可以只发起一次 runAgent，再等待最终结果，而不用访问循环内部文件。
 
 <<< @/snippets/04-agent-loop/packages/runtime/src/index.ts
 
@@ -310,6 +322,8 @@ export interface CartItem {
 ## 第五步：应用一次调用 Runtime
 
 **完整替换 `examples/code-review/src/main.ts`**：删除 `ReviewStopped`、`showAnswer`、`messages/context` 的本地累计逻辑和 `first/second` 两次调用；保留模型配置、任务和工具接入。新增 `callModel` 函数，把当前 `complete` 绑定到配置，再调用 `runAgent` 和 `reportRun`。
+
+这份入口只组装审查任务、文件工具和模型连接，调用一次 runAgent，再把返回结果交给 reportRun。callModel 将最新上下文连接到现有 complete；历史保存和轮次推进已经交给 Runtime。
 
 <<< @/snippets/04-agent-loop/examples/code-review/src/main.ts
 

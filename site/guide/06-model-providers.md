@@ -6,6 +6,18 @@
 
 这是[第二阶段](/roadmap#第二阶段-逐篇大纲)的第一篇，建设的是 Agent 的**模型接入能力**：无论服务怎样表达动作，运行内核都能接住项目消息、执行工具、保存反馈，再继续决策。它不改变模型本身的能力，也不保证两家服务的答案相同。接下来的单元继续建设工具契约、事件、流式输出、取消和预算。
 
+## 实施前，先串起本篇的实现逻辑
+
+1. **应用选择提供商，保留原任务。** 代码审查还是请求文件，发布调查还是查询记录；变化的是模型配置增加服务选择。密钥仍由应用提供，不放进任务消息。
+2. **统一入口解析配置，再选择适配器。** 模型包接收项目上下文和配置，检查模型名、输出上限等选项，将同一次调用交给对应服务实现，Runtime 不增加厂商分支。
+3. **适配器完成两个方向的转换。**
+   - **3.1 发送时转换。** 把项目的用户消息、模型工具请求与本地结果，组织成所选服务认识的消息格式；两家格式不同，不能直接把一家的正文换个地址发送。
+   - **3.2 返回时转换。** 从服务原生响应取得文字、工具请求与停止原因，统一返回项目的模型消息。Runtime 接到的仍是原契约，可以继续执行工具和保存反馈。
+4. **用同一循环继续任务。** 工具结果进入下一轮上下文，再由适配器编码发送。应用仍按各自任务规则展示和检查最终结果，不要求两家回答措辞相同。
+5. **没有第二家 Key，也能先观察协议。** 本地入口用预写的两种原生 HTTP 响应替代网络，但调用实际编码、解码、Runtime 和文件工具，检查整个往返。它证明接线可运行，不等于第二家真实服务已验证。
+
+后面先接配置与适配，再把两种入口连到同一套任务，不重新实现执行循环。
+
 ## 换服务时，什么应该变化
 
 继续使用代码审查任务：读取 `src/cart.ts`，指出总价计算的问题。工具和材料沿用 03 至 05；实际文件仍是 `fixtures/code-review/src/cart.ts`，由应用配置的清单映射为模型看到的 `src/cart.ts`。
@@ -90,6 +102,8 @@ git switch -c agent/chapter-06-model-providers
 
 完整替换 `packages/model/src/providers/deepseek.ts`：原 `complete` 改名为 `completeDeepSeek`，参数改为内部 `ResolvedCompleteOptions`；删除原来重复的密钥、模型、消息与上限检查。原 `encodeMessages`、`decodeMessage`、工具 schema 转换和服务选项保留。`maxTokens` 现在从检查后的配置取得。
 
+这个适配入口接收项目上下文和已经检查的配置，按 DeepSeek 协议发送、解码并返回项目消息。公开 complete 会按服务选择调用它，Runtime 仍然不接触原生响应字段。
+
 <<< @/snippets/06-model-providers/packages/model/src/providers/deepseek.ts
 
 关键变化是 `(options.fetch ?? globalThis.fetch)(...)`：有本地传输就调用它，没有就调用正常网络传输。两种情况下，后面仍等待 `Response`、读取未知 JSON，再交给原 `decodeMessage`。更换传输没有绕过协议转换，也没有直接给 Runtime 塞一条最终消息。
@@ -112,6 +126,8 @@ Anthropic 需要三条发送消息：用户任务；带两个 `tool_use` 块的 
 ### 先定义发送结构
 
 新建 `packages/model/src/types/anthropic.ts`。这些类型只描述该服务编码器创建的对象，不从包入口导出，也不替换项目公共 `Message`。工具说明使用服务的 `input_schema` 字段，稍后由请求函数转换，字段定义见[工具说明协议](https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools)。
+
+这份内部类型约定项目消息编码成 Anthropic 请求时使用的文本块、工具请求块和工具结果块。编码器创建这些对象，请求函数放进正文；本地类型声明不验证服务返回，也不替代项目公共消息。
 
 <<< @/snippets/06-model-providers/packages/model/src/types/anthropic.ts
 
@@ -138,6 +154,8 @@ Anthropic 需要三条发送消息：用户任务；带两个 `tool_use` 块的 
 ```
 
 新建 `packages/model/src/providers/anthropic-response.ts`。参数 `value` 来自 HTTP 的 `response.json()`，它在检查前是未知数据，不能因为写了接口就相信内容正确。
+
+decodeAnthropicMessage 接收未知的服务 JSON，将文本块、工具请求块和停止原因转换成一条项目 AssistantMessage，返回给 Anthropic 请求函数。这样上层循环只处理原来的消息形状，而不解析服务专有的 content 块。
 
 <<< @/snippets/06-model-providers/packages/model/src/providers/anthropic-response.ts
 
@@ -167,11 +185,15 @@ Anthropic 需要三条发送消息：用户任务；带两个 `tool_use` 块的 
 
 新建 `packages/model/src/complete.ts`。它沿用外部函数名 `complete(context, options)`，先接住 `resolveOptions` 返回的 `resolved`，再按提供商调用对应函数。
 
+这个统一入口替应用选择一次调用的实际适配器，接收原 Context 和可带 provider 的配置，返回与之前相同的模型消息。它不执行工具，也不建立历史；Runtime 接住消息后继续原流程。
+
 <<< @/snippets/06-model-providers/packages/model/src/complete.ts
 
 应用等待的是这个函数返回的 Promise。适配器返回项目消息后，公开函数继续把它返回；如果是在 `runAgent` 中调用，最终由循环的 `message = await options.callModel(...)` 接住。**真正保存历史的是原来的 `messages.push(message)`，不是适配器的 `return`。**
 
 完整替换 `packages/model/src/index.ts`：保留所有已有类型导出，新增 `ModelProvider`；`complete` 的导出来源从 `./providers/deepseek` 改为 `./complete`。不导出内部发送类型和已补全配置。
+
+包入口公开统一 complete 和服务选择类型。应用仍从 @ai-harness/model 导入，服务内部的请求结构与默认值处理不变成公共调用要求。
 
 <<< @/snippets/06-model-providers/packages/model/src/index.ts
 
@@ -197,6 +219,8 @@ JS
 ## 第六步：应用选择提供商
 
 完整替换 `examples/shared/model.ts`。保留 `createModelCall` 的名字和返回的 `ModelCall`；在创建函数时确定本次运行的配置。
+
+这个工厂从应用配置选择服务及对应凭据，返回绑定好配置的 ModelCall。每轮 Runtime 传入新上下文时，闭包使用同一份服务配置调用公开 complete，把统一消息返回循环。
 
 <<< @/snippets/06-model-providers/examples/shared/model.ts
 
@@ -235,6 +259,8 @@ JS
 [![固定样本传输的处理过程：加载、核对请求、取样本、返回本地 Response](/diagrams/06-local-transport.svg)](/diagrams/06-local-transport.svg)
 
 新建 `examples/code-review/src/check-protocol.ts`，把本地传输交给 `complete`，仍把原 `reviewTools` 交给原 `runAgent`：
+
+这个观察入口选择某家预写 HTTP 样本，将本地 fetch 注入公开 complete，再把连接与实际文件工具交给 runAgent。最后展示统一历史，检查两种原生响应能否走完相同工具往返；动作和答案仍由样本预先提供。
 
 <<< @/snippets/06-model-providers/examples/code-review/src/check-protocol.ts
 

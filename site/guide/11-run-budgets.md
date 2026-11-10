@@ -1,3 +1,7 @@
+---
+pageClass: run-budgets
+---
+
 # 11 整次时限与运行预算
 
 本篇实现：**一次 Agent 运行有累计的时间和工具处理额度；到期或额度不足时，停止后续动作，保留此前完成的事实，并告诉应用是哪项限制触发。** 继续使用代码审查和发布调查，不新增业务任务。
@@ -66,6 +70,8 @@ Pi 固定版本的 [runLoop、streamAssistantResponse 和 executeToolCallsSequen
 
 新建 `packages/runtime/src/control/` 目录，再新建 `packages/runtime/src/control/run-control.ts`，写入完整代码。它接收外部信号与可选期限，返回上面的控制对象。
 
+createRunControl 将外部取消与本次累计期限组合成一个包内控制对象，返回供循环使用的信号、检查和清理能力。它按启动时刻计算剩余时间，记录主动取消或到期的来源；后面的循环据此选择停止结果，消息和工具计数不在这里保存。
+
 <<< @/snippets/11-run-budgets/packages/runtime/src/control/run-control.ts
 
 先沿没有取消的过程理解。`started` 保存创建时的 `performance.now()`；若期限为 60 秒，计时器只创建一次。每次动作边界调用 `stopStatus()`，用“现在减开始”检查整次已经经过多久，未到期就返回 `undefined`，循环可以继续。
@@ -116,6 +122,8 @@ JS
 
 **完整替换 `packages/runtime/src/types/run.ts` 的全部内容。** 保留 `RunAgentOptions/RunOutcome/RunResult` 与原有状态；新增 `timeoutMs/maxToolCalls`，给运行记录增加数字 `toolCalls`，增加 `timedOut/toolLimit` 停止分支。
 
+这份契约约定应用怎样给一次运行设置时间与工具额度，以及 Runtime 怎样返回累计工具处理数和受限制停止。模型调用次数和工具处理次数是不同字段，报告直接读取它们，而不从事件数量推算。
+
 <<< @/snippets/11-run-budgets/packages/runtime/src/types/run.ts
 
 `maxToolCalls: 0` 允许模型回答，但不允许程序处理工具请求；省略它才表示本篇不额外设工具上限。`timeoutMs` 省略也表示不设整次期限，原来的模型调用次数和单次 HTTP 限制仍生效。
@@ -135,6 +143,8 @@ JS
 | `model_cancelled` 与 `tool_cancelled` 分支 | 名称、字段与类型结构都保留；只更新含义注释 | 说明某次等待已退出；具体因取消还是到期，仍由 `run_end.status` 表达 |
 
 在下面的完整代码中，两个新状态各自占一行并标【新增】，新计数字段也单独标【新增】。两个中止事件旁的【修改】明确表示“只扩展含义，字段不变”，不需要给它们新增一个原因字段。
+
+这份事件类型让停止通知携带 Runtime 已经统计的工具处理数，并接受到期或额度不足状态。应用接收事件来展示原因；模型或工具等待中止的通知仍需结合最终 run_end 才能确定停止来源。
 
 <<< @/snippets/11-run-budgets/packages/runtime/src/types/events.ts
 
@@ -180,6 +190,8 @@ JS
 
 **完整替换 `packages/runtime/src/tools/execute.ts` 的全部内容。** 公开 `executeTools(message, tools, signal?)` 保持 10 的签名；内部 `executeToolBatch` 从 `(message, registry, notify?, signal?)` 改为 `(message, registry, options?)`。保留原参数门禁、顺序处理、已知失败和取消行为，新增逐项额度申请与期限刷新。
 
+这个批次执行器为每项请求申请工具额度，再做原参数门禁与真实执行。获准项的结果交回循环；额度不足则携带本批已完成结果停止。坏参数也占处理额度，不等于只有实际文件 I/O 才计数。
+
 <<< @/snippets/11-run-budgets/packages/runtime/src/tools/execute.ts
 
 先走正常过程。循环给执行器三项请求和一份“最多处理两项”的申请函数。第一项开始前刷新期限，申请成功，计数变 1；发送 `tool_start` 后检查信号，再解析参数并执行。成功或已知失败都形成结果，放进本批 `results`。第二项同样获准，计数变 2。
@@ -205,6 +217,8 @@ await notify?.({ type: 'tool_start', toolCallId: call.id, toolName: call.name })
 现在将前面的两条关系连接起来：运行控制管时间和信号；循环管模型次数、工具尝试次数与历史；执行器逐项申请。
 
 **完整替换 `packages/runtime/src/run-agent.ts` 的全部内容。** 保留公共 `runAgent`，把实际循环整理为同文件内的 `runLoop`；新增 `createRunControl` 的创建/清理、`finishStopped` 与 `tryStartToolCall`。原来的 `cancel()` 被能区分到期与取消的 `finishStopped()` 替代，原工具/模型失败和停止规则保留。
+
+runAgent 创建并最终清理本次期限控制，同文件的 runLoop 使用它推进任务，保存历史并累计模型与工具处理数。应用只等待一个结果；到期、主动取消、额度不足和未知失败分别返回，不因为一次等待结束就都归为同一种错误。
 
 <<< @/snippets/11-run-budgets/packages/runtime/src/run-agent.ts
 
@@ -260,6 +274,8 @@ npm run check
 
 ::: details examples/shared/print-event.ts
 
+这个展示函数从每条运行通知选取摘要，显示真实累计数字及停止状态。它不增加工具计数，也不根据中止通知的异常名称猜测是否到期，最终原因以 run_end 为准。
+
 <<< @/snippets/11-run-budgets/examples/shared/print-event.ts
 
 :::
@@ -267,6 +283,8 @@ npm run check
 **完整替换 `examples/shared/print-run.ts` 的全部内容。** 保留已有记录与安全诊断展示，只在最终停止摘要中增加数字 `toolCalls`。
 
 ::: details examples/shared/print-run.ts
+
+这个函数接收已经停止的运行记录，展示新增的 toolCalls 与原有历史、失败信息。它只帮助观察三种数字的区别，不决定额度是否可用，也不会重新执行未完成动作。
 
 <<< @/snippets/11-run-budgets/examples/shared/print-run.ts
 
@@ -280,11 +298,15 @@ npm run check
 
 **代码审查入口：完整替换 `examples/code-review/src/main.ts` 的全部内容：**
 
+审查入口为同一运行提供 6 次模型、8 项工具和 60 秒约束，继续传入 Ctrl+C 信号。接住结果后先区分取消或受限制停止，只有正常任务路径才进入原报告，最后清理应用监听。
+
 <<< @/snippets/11-run-budgets/examples/code-review/src/main.ts
 
 **发布调查入口：完整替换 `examples/release-impact/src/main.ts` 的全部内容。展开下方代码后写入该文件：**
 
 ::: details examples/release-impact/src/main.ts
+
+调查入口为原查询任务配置相同的初始约束，再等待原 Runtime 的结果。任务工具和发布证据规则不变；停止控制不因任务更换而复制到业务查询函数。
 
 <<< @/snippets/11-run-budgets/examples/release-impact/src/main.ts
 
@@ -1024,3 +1046,9 @@ git push -u origin agent/chapter-11-run-budgets
 
 提交推送不等于合并部署，也不等于独立掌握或生产可用。
 
+
+<style>
+.run-budgets .vp-doc .custom-block.details summary {
+  overflow-wrap: anywhere;
+}
+</style>

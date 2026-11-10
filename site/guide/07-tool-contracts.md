@@ -24,7 +24,17 @@
 
 继续使用原来的 `read_file`。它的工具说明要求 `path` 是字符串，且不能有额外字段；这份说明既发送给模型，也会成为本地检查的依据。
 
-下面是本篇要支持的过程，**是一种可能轨迹，不是要求真实模型固定调用三次**：
+整篇实现先准备工具，再逐项决定能否执行，最后把结果交回循环：
+
+1. **启动时准备应用提供的工具清单。** 检查名称与说明，复制本次使用的数据，再将每个工具的 schema 编译成校验函数。后面多轮复用这份准备结果，不在每轮重新编译。
+2. **模型提出请求后，执行器先检查批次身份。** 核对工具请求的类型、名称字段和批内 ID，再按响应中列出的请求逐项处理；这不是把全部注册工具都执行一次。
+3. **每项请求经过两层门禁。**
+   - **3.1 Runtime 检查普通数据。** 查工具名、解析参数 JSON，再按已编译的 schema 检查字段和类型。不通过就产生原请求 ID 对应的已知失败反馈，不进入工具 execute。
+   - **3.2 工具检查具体动作。** 数据形状通过后，读取工具还要检查路径清单、文件条件并真正读取。schema 不能替代这层许可与执行检查。
+4. **能解释的失败反馈给模型，未知异常停止。** 已知错误成为 toolResult，Runtime 保存后允许下一轮修正；未知异常终止后续动作，同时保留本批已经完成的反馈。模型等待的故障也用明确类别报告，不混同工具参数错误。
+5. **应用观察为什么停止。** 运行结果带阶段与受控失败标识，报告展示原因；即使最后 answered，仍要检查实际读取和结论。本地固定入口用坏参数复现门禁，真实模型不必先犯这个错误。
+
+下面是一种可能轨迹，不是要求真实模型固定调用三次：
 
 | 模型调用 | 决定或结果 | Runtime 的动作 |
 |---|---|---|
@@ -97,9 +107,13 @@ npm install ajv@8.20.0 --save-exact --workspace @ai-harness/runtime
 
 新建 `packages/model/src/types/failures.ts`：
 
+ModelFailureKind 约定模型等待失败的稳定类别，供后面的错误对象和 Runtime 分支使用。它只是类别名称，不会通过错误文字自动识别连接、HTTP 或协议问题。
+
 <<< @/snippets/07-tool-contracts/packages/model/src/types/failures.ts
 
 再新建 `packages/model/src/errors/model-call-error.ts`：
+
+ModelCallError 将一项受控失败类别与允许展示的说明组合成错误对象。HTTP 层和模型入口在实际失败处创建它，Runtime 接住后生成运行失败信息；原始原因仅保留供本地检查。
 
 <<< @/snippets/07-tool-contracts/packages/model/src/errors/model-call-error.ts
 
@@ -121,17 +135,23 @@ npm install ajv@8.20.0 --save-exact --workspace @ai-harness/runtime
 
 ::: details packages/model/src/providers/deepseek.ts【修改】
 
+这份 deepseek 适配仍接收统一上下文与配置，构造本服务正文，并将共用 HTTP 函数取得的未知 JSON 交给自己的解码器。成功返回项目消息；连接或读取故障则沿新错误类别向上报告，不返回伪造的工具观察。
+
 <<< @/snippets/07-tool-contracts/packages/model/src/providers/deepseek.ts
 
 :::
 
 ::: details packages/model/src/providers/anthropic.ts【修改】
 
+这份 anthropic 适配仍接收统一上下文与配置，构造本服务正文，并将共用 HTTP 函数取得的未知 JSON 交给自己的解码器。成功返回项目消息；连接或读取故障则沿新错误类别向上报告，不返回伪造的工具观察。
+
 <<< @/snippets/07-tool-contracts/packages/model/src/providers/anthropic.ts
 
 :::
 
 再完整替换 `packages/model/src/complete.ts`。原 `resolveOptions` 与提供商选择保留；配置检查失败转为 `configuration`，适配器已有的 `ModelCallError` 原样抛出，其余编码或解码异常转为 `protocol`。
+
+统一入口继续选择适配器并返回项目消息，同时为配置和未识别的编解码失败设置受控类别。调用方可以按类别处理失败，不需要猜服务错误字符串，也不会因为转换失败而执行半份工具请求。
 
 <<< @/snippets/07-tool-contracts/packages/model/src/complete.ts
 
@@ -184,15 +204,21 @@ JS
 
 完整替换已有的 `packages/runtime/src/types/tools.ts`，字段不变，只明确结构验证与工具语义检查的分工：
 
+这里仍约定应用提供工具说明和 execute，字段没有改变。Runtime 从说明编译普通参数检查，具体工具继续检查许可与实际操作；这个类型不会替任何一方执行验证。
+
 <<< @/snippets/07-tool-contracts/packages/runtime/src/types/tools.ts
 
 schema 的运行时验证不会把跨函数的 TypeScript 参数自动变成某个接口，因此 `execute` 仍接收 `unknown`。既有工具中的类型缩小和路径、记录清单检查继续保留；本篇新增门禁保证经 Runtime 调用的每个工具都经过声明的结构检查。
 
 在新位置创建 `packages/runtime/src/errors/tool-execution-error.ts`。它承接旧 `tool-error.ts` 的类，保留 `new ToolExecutionError('允许反馈的说明')` 用法，默认代码为 `tool_failure`；执行器可用第二个参数选择更具体的代码。
 
+这个类把“允许反馈的工具失败”交给执行器：输入安全说明与可选代码，创建能被识别的错误对象。执行器据此产生 toolResult，模型下一轮可以修正请求；工具作者仍不应把任意内部异常当成该类抛出。
+
 <<< @/snippets/07-tool-contracts/packages/runtime/src/errors/tool-execution-error.ts
 
 新建 `packages/runtime/src/errors/tool-batch-error.ts`。它不表示可继续反馈的失败，而是“这批必须停止”，同时带回已经完成的结果。
+
+ToolBatchError 替执行器把未知异常与本批此前结果一起带回循环。循环可以保存已完成反馈后停止，既不丢掉已发生事实，也不让后续工具继续执行；它不是给模型重试的一项普通失败结果。
 
 <<< @/snippets/07-tool-contracts/packages/runtime/src/errors/tool-batch-error.ts
 
@@ -282,6 +308,8 @@ ID 为空或重复属于整批无法可靠关联，在任何一项动作之前�
 
 完整替换 `packages/runtime/src/types/run.ts`。`RunAgentOptions` 和原状态值保留；只有 `status: 'failed'` 分支新增必填 `failure: RunFailure`，原 `error` 继续留给本地调试。
 
+这份契约让应用从 failed 分支同时取得受控的 failure 和供本地调试的原异常。运行函数负责创建这些值，报告负责选择安全字段展示；类型声明不捕获异常。
+
 <<< @/snippets/07-tool-contracts/packages/runtime/src/types/run.ts
 
 `status` 回答“运行怎样停下”，`phase` 回答“模型侧还是工具侧”，`failure.code` 回答“这一侧识别到了哪类问题”。比如工具配置错误是 `failed / tools / tool_configuration`，但模型调用数为 0。调用上限、截断仍是原来的独立状态，不强行塞进异常类型。
@@ -289,6 +317,8 @@ ID 为空或重复属于整批无法可靠关联，在任何一项动作之前�
 ### 接回完整循环
 
 完整替换 `packages/runtime/src/run-agent.ts`。保留原循环、次数预算、文本和截断停止规则；将原直接映射工具说明改为先准备注册表；工具执行调用改为 `executeToolBatch`；两个异常出口补上受控失败信息。
+
+这一版循环在启动时取得工具注册表，多轮复用它来执行请求。成功或已知失败继续保存反馈；模型等待、工具准备或未知工具异常则返回明确的停止结果，并带回已经完成的批次事实给应用。
 
 <<< @/snippets/07-tool-contracts/packages/runtime/src/run-agent.ts
 
@@ -317,6 +347,8 @@ npm run check
 ```
 
 先生成新的公开声明，再改应用的展示代码。完整替换 `examples/shared/print-run.ts`：保留已有历史遍历和受控异常标识，新增输出 `failure.code` 与框架给出的说明。
+
+这个显示函数读取 Runtime 已经生成的历史和受控 failure，输出失败阶段、代码与安全说明。它不重新分类任意异常，也不因为日志显示失败而重新执行工具。
 
 <<< @/snippets/07-tool-contracts/examples/shared/print-run.ts
 

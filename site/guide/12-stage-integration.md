@@ -14,11 +14,12 @@ pageClass: stage-integration
 
 这次审查两份新材料：`fixtures/code-review/src/invoice.ts` 计算金额，`pricing.ts` 提供折扣规则，稍后会给出完整内容。单价 100、数量 10 时，规则规定打九折，正确金额为 900；金额函数却连续扣了两次折扣，实际得到 810。
 
-应用先把审查目标、可读的两份文件和证据要求组装在一起。模型只看到目标和工具说明，不会因为本地存在这些文件就自动知道源码。模型提出 `read_file` 请求后，Runtime 检查名称、参数和剩余额度，再由 coding-tools 真正读取配置中的文件。
-
-读取函数返回文本，执行器把它与原请求 ID 组成 `toolResult`。Runtime 将结果保存进自己的消息数组，下一次调用模型时带上它。模型包将项目消息转换成所选服务的格式，服务才有机会根据新内容继续回答。
-
-文字到达时，应用先显示预览。只有模型包确认响应完整，Runtime 才保存完整模型消息并决定停止状态。入口用 `const result = await runAgent(...)` 接住结果，再调用任务自己的报告函数，检查正常回答和两份成功读取证据。最后仍要核对 810、900 及错误原因是否符合源码。
+1. **应用准备任务与范围。** 把审查目标、可读两份文件和证据要求组装在一起，再创建模型连接、取消信号和运行预算。模型只看到目标和工具说明，不会因为本地存在文件就自动知道源码。
+2. **同一个 Runtime 按请求取得材料。** 模型提出 read_file，执行器检查名称、参数和剩余额度，通过后由 coding-tools 读取配置中的实际文件。查询任务同样使用原记录工具，不改循环。
+3. **把实际结果保存给下一轮。** 执行器将读取文本与原请求 ID 组成 toolResult；Runtime 追加到自己的消息数组。下一次模型调用取得更新后的上下文，模型包再转为所选服务的协议。
+4. **展示预览，但只保存完整响应。** 文字到达时应用可以先显示；模型包确认响应完整后，Runtime 才保存完整消息并选停止状态。连接缺尾帧时，已有预览不能变成答案。
+5. **应用检查证据和结论。** 入口接住一次运行结果，报告要求正常回答及两份成功读取；还要对照实际源码，核对 810、900 与重复折扣原因。读取齐全不自动证明分析正确。
+6. **用故障和仓库外消费检验累计能力。** 固定观察入口替换的是 HTTP 响应，实际工具、控制和报告仍运行；再将三个包安装到外部项目，确认应用通过公开入口使用。固定轨迹和离线构建成功不能充当真实模型自主任务证据。
 
 这是一条完整过程。失败时也要沿这条过程找位置：坏参数应产生反馈供下一轮使用；取消或到期应停止等待；响应缺尾帧时，即使屏幕已有答案文字，也不能把预览当成交付。
 
@@ -45,9 +46,13 @@ git switch -c agent/chapter-12-stage-integration
 
 新建 `fixtures/code-review/src/pricing.ts`，写入完整代码：
 
+这份材料定义折扣规则：输入数量，返回该数量对应的折扣率。后面的 invoice 材料导入它，审查时需要同时取得这份规则，才能判断金额函数的处理是否正确。
+
 <<< @/snippets/12-stage-integration/fixtures/code-review/src/pricing.ts
 
 新建 `fixtures/code-review/src/invoice.ts`，写入完整代码：
+
+这份待审查函数接收单价和数量，取得折扣率后计算总额，但故意重复应用折扣。它和上面的规则构成跨文件证据，文件工具只读取文本，不在 Agent 进程里执行它。
 
 <<< @/snippets/12-stage-integration/fixtures/code-review/src/invoice.ts
 
@@ -71,6 +76,8 @@ git switch -c agent/chapter-12-stage-integration
 
 我们让应用的任务工厂一次返回这三项。新建 `examples/shared/types/task.ts`，写入完整代码：
 
+ExampleTask 约定应用工厂返回“目标与工具输入＋报告函数”。入口把 input 交给 Runtime，停止后把结果交给 report；这个对象连接同一任务的材料范围与证据要求，不负责保存历史或选择动作。
+
 <<< @/snippets/12-stage-integration/examples/shared/types/task.ts
 
 `input` 将交给 `runAgent`；它只包含初始消息、总体要求和工具。`report` 是运行停止后由入口调用的函数，负责当前任务的有限检查。`id` 只给应用日志区分任务，不是 Runtime 创建的 `runId`。
@@ -81,6 +88,8 @@ git switch -c agent/chapter-12-stage-integration
 
 **完整替换 `examples/code-review/src/tools.ts`。** 保留公开的默认 `reviewTools`；新增 `createReviewTools(files)`，让任务工厂传入自己的路径映射。默认映射仍是 cart，早期观察入口不需要改。
 
+createReviewTools 接收本次可见名称到材料位置的映射，返回实际读取工具供任务使用。默认 reviewTools 仍保留旧 cart 配置，新 invoice 任务可以给出两份文件而不修改通用读取实现。
+
 <<< @/snippets/12-stage-integration/examples/code-review/src/tools.ts
 
 例如传入 `{'src/invoice.ts': 本地invoice文件位置, 'src/pricing.ts': 本地pricing文件位置}` 后，工厂返回一个配置好的 `read_file` 工具。模型仍然只提交项目相对路径，实际磁盘位置由应用决定。读取和范围检查继续复用 coding-tools，没有在应用里再写一份文件执行器。
@@ -88,6 +97,8 @@ git switch -c agent/chapter-12-stage-integration
 ### 审查报告要求两份证据
 
 **完整替换 `examples/code-review/src/report-run.ts`。** 保留 `reportRun` 名称和布尔返回值；第二参数从单个字符串扩展为字符串或路径数组。原先 `reportRun(result, 'src/cart.ts')` 仍有效。新增数组归一化、空清单拒绝及逐文件缺失检查；`printRun` 和最终答案展示保留。
+
+这个报告接收一次运行结果和一份或多份必需源码路径，展示记录并检查每份是否有成功全文读取。返回 boolean 给入口设置退出结果；即使证据齐全，它仍不自动验证金额推理是否正确。
 
 <<< @/snippets/12-stage-integration/examples/code-review/src/report-run.ts
 
@@ -98,6 +109,8 @@ git switch -c agent/chapter-12-stage-integration
 ### 创建审查任务
 
 新建 `examples/code-review/src/task.ts`，写入完整代码：
+
+createReviewTask 根据应用选择的材料组装目标文本、可读文件和报告要求，返回一个 ExampleTask。旧 cart 与新 invoice 都通过它进入同一个循环；工厂不调用模型，也不预先给出读取顺序。
 
 <<< @/snippets/12-stage-integration/examples/code-review/src/task.ts
 
@@ -111,11 +124,15 @@ git switch -c agent/chapter-12-stage-integration
 
 **完整替换 `examples/release-impact/src/tools.ts`。** 保留 `createReleaseTools` 和两项查询工具；新增可选的 `materials` 参数，默认 URL 仍指向原来的 `releases.json/services.json`。两次 `loadRecords` 改为读取传入位置，`createLookupTool` 的执行实现不变。
 
+这个工厂在运行前从指定材料位置加载发布与服务记录，返回原两项查询工具。默认仍读旧材料，新任务可替换 JSON 位置，查询 execute 与 Runtime 保持原实现。
+
 <<< @/snippets/12-stage-integration/examples/release-impact/src/tools.ts
 
 `await createReleaseTools({ releases: 阶段发布URL, services: 阶段服务URL })` 会先实际加载两份 JSON，再返回查询工具。加载发生在启动 Agent 之前；材料无法加载就不启动运行，不能把准备失败伪装为模型的查询反馈。
 
 新建 `examples/release-impact/src/task.ts`，写入完整代码：
+
+createReleaseTask 等待对应查询工具准备好，再返回发布目标、运行输入和本案例报告。入口接住任务后才启动 Agent；预期查询证据供报告使用，不是发给模型的固定行动列表。
 
 <<< @/snippets/12-stage-integration/examples/release-impact/src/task.ts
 
@@ -145,9 +162,13 @@ JS
 
 **完整替换 `examples/code-review/src/main.ts`。** 删除入口内的 `reviewPath/prompt` 和直接 `reviewTools/reportRun` 导入，改为 `createReviewTask('cart', process.argv[2])`；运行配置用 `...task.input`，报告用 `task.report(result)`。原模型连接、事件展示、六次模型上限、八项工具额度、60 秒期限、取消分支和清理均保留。
 
+这个真实入口取得 cart 任务对象，将 task.input 与原模型连接、观察和预算交给 runAgent。停止后调用同一 task.report，取消与清理仍由应用处理，不在入口重复组装证据清单。
+
 <<< @/snippets/12-stage-integration/examples/code-review/src/main.ts
 
 **完整替换 `examples/release-impact/src/main.ts`。** 删除入口内的 `releaseId/serviceIds/prompt` 和直接工具、报告导入；在 `try` 中等待 `createReleaseTask('original', process.argv[2])`，再传入 `...task.input`、调用 `task.report(result)`。原预算、连接和取消清理保持不变。
+
+这个入口等待发布任务准备完成，再用原 Runtime 执行，最后调用任务返回的报告。准备阶段材料加载失败就不启动模型；模型运行故障与准备失败仍是不同位置。
 
 <<< @/snippets/12-stage-integration/examples/release-impact/src/main.ts
 
@@ -192,6 +213,8 @@ JS
 ### 阶段入口选择同一任务与模型连接
 
 新建 `examples/stage-check/main.ts`，写入完整代码：
+
+阶段观察入口选择任务、提供商样本和故障模式，再将依赖与约束交给公开 runAgent。实际编码、流读取、工具和报告照常运行，只有服务返回和故障时机预先安排，不能把固定答案视为模型自主成功。
 
 <<< @/snippets/12-stage-integration/examples/stage-check/main.ts
 
@@ -307,11 +330,15 @@ workspace 内能导入包，还需要检验包离开仓库后是否漏了内部�
 
 新建 `fixtures/package-consumer/source.ts`，写入完整代码：
 
+这份独立材料供仓库外读取工具使用，其中的 externalMaterial 常量提供一个可识别标记。外部消费入口检验的是包能否读取它并反馈，材料本身不属于框架实现。
+
 <<< @/snippets/12-stage-integration/fixtures/package-consumer/source.ts
 
 ![仓库构建并打包三个库，外部使用者通过公开入口配置材料并完成反馈或取消](/diagrams/12-package-consumer.svg)
 
 新建 `examples/package-consumer/main.mjs`，写入完整代码。这个入口将复制到仓库外，使用普通 ESM JavaScript，避免还需依赖本仓库的 tsx 配置。
+
+这个外部消费入口从安装后的公开包导入能力，配置外部材料和固定模型传输，完成实际工具反馈或取消，再检查结果。它不跨目录读取仓库内部实现，用于发现只在 monorepo 源码环境里才成立的接线。
 
 <<< @/snippets/12-stage-integration/examples/package-consumer/main.mjs{js}
 

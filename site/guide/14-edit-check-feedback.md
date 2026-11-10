@@ -12,13 +12,14 @@ pageClass: edit-check-feedback
 
 继续使用 13 的金额材料：入口导出当前计算函数，规则规定满 10 件只应用一次 10%折扣。单价 100、数量 10 时，当前重复折扣得到 810，正确应为 900。先保留这些已有材料，稍后补充 README 规则与完整验收程序。
 
-应用先复制材料到一个新的临时目录。模型可以读取这个副本，但只有 `src/checkout/invoice.ts` 获得写入许可；折扣规则和验收程序不在写工具的允许范围内。
-
-假设模型先读源码，接着提出一次文本替换，把重复折扣的 return 改成 `return subtotal;`。修改确实写进副本，但这个改法把全部折扣都删掉了。应用提供的 `run_check` 工具启动一个真实 Node 进程，在副本上执行预设验收；单价 100、数量 10 这一项得到 1000，预期 900，程序退出码为 1。
-
-工具将退出码和输出组成 `CheckResult`，Runtime 再把它与请求 ID 组成 `toolResult`，保存到消息历史。下一次模型调用收到的内容里，已经有这项实际失败。模型可以据此提出另一项替换，保留一次折扣，再请求验收。通过后总结改动；若仍失败或预算耗尽，则保留已有事实并说明限制。
-
-这里发生了三件不同的事：写工具真的修改文件，验收工具真的执行程序，模型有机会利用返回值重新选择动作。只在终端显示“验收失败”而不把结果传回下一轮，还没有完成这个过程。
+1. **应用准备独立副本与许可。** 先复制材料到新临时目录，调查工具共用这个目录；只有 src/checkout/invoice.ts 获得写入许可。规则与外置验收程序不在写工具的允许清单里，原材料保留。
+2. **模型调查后提出修改，工具实际写入。** 先读源码与规则，再使用原文中唯一一段文本做替换。比如把重复折扣改成 return subtotal，副本确实改变了，但这个改法也删掉了全部折扣，不代表修复成功。
+3. **验收工具取得真实反馈。**
+   - **3.1 运行固定程序。** 模型只能请求 run_check，不能提交另一个命令。工具启动真实 Node 子进程，在副本上执行应用配置的检查。
+   - **3.2 接住退出码和用例。** 这个错误改法得到 1000、预期 900，程序退出 1。工具把退出码与输出组成 CheckResult；“成功取得观察”和“用例通过”是不同结果。
+   - **3.3 把观察交给下一轮。** 执行器将实际结果与原请求 ID 组成 toolResult，Runtime 保存到历史。下一次模型输入因此包含失败值，不只是终端显示了一句“失败”。
+4. **模型依据反馈再决定。** 它可以保留一次折扣、再次运行验收，通过后总结；也可能继续失败、遇到限制或用完预算。修改和重验由实际请求触发，不在 Runtime 写死修复顺序。
+5. **停止后展示副本与记录。** 应用接住结果，展示修改前后内容与最近验收。此时只形成待审阅候选，还没把历史通过与最终内容绑定；第 15 篇补这项判断，不把本篇候选自动合回原材料。
 
 ![错误改法产生实际失败值，反馈保存进入下一轮，再修改并执行验收](/diagrams/14-feedback-loop.svg)
 
@@ -59,6 +60,8 @@ Coding Agent 不只面对 TS。本篇把扩展名从扫描条件移到应用配�
 
 新建 `packages/coding-tools/src/types/code-task.ts`，写入完整代码：
 
+这份类型约定两端数据：应用用 CodeTaskOptions 指定副本、可写文件与固定验收命令，工具用 CheckResult 返回实际退出码及输出。命令配置不从模型参数取得，验收失败结果仍可以反馈给下一轮。
+
 <<< @/snippets/14-edit-check-feedback/packages/coding-tools/src/types/code-task.ts
 
 `CodeTaskOptions`由应用创建。`writablePaths`列出本次可以改的既有文件；`check.executable/args`指定可信程序及参数。模型只得到工具说明，不能给 run_check 另传命令或环境变量。
@@ -68,6 +71,8 @@ Coding Agent 不只面对 TS。本篇把扩展名从扫描条件移到应用配�
 ## 第二步：读写共用同一工作区
 
 **完整替换 `packages/coding-tools/src/workspace/open.ts`。** 保留 `guardIo/visit`、扫描数量/深度限制和有界读取；新增 extensions 复制与检查，将后缀条件改为应用配置。原 read 内的路径复查提为同文件 `resolve`，read 调用它后再读取，返回环境新增 root/extensions/resolve。
+
+这个准备函数接收根目录与可选文本后缀，返回一份查找、读取和替换可共享的环境。read 和写工具都先经 resolve 复查实际路径；取得路径不等于取得写许可，写工具还需检查更窄的清单。
 
 <<< @/snippets/14-edit-check-feedback/packages/coding-tools/src/workspace/open.ts
 
@@ -81,6 +86,8 @@ Coding Agent 不只面对 TS。本篇把扩展名从扫描条件移到应用配�
 
 ::: details packages/coding-tools/src/workspace/find.ts：完整配套代码
 
+这个工厂返回路径候选工具：从共享索引按模型 query 筛选相对路径，供后续读取选择。行为沿用 13，只有说明改为本次配置的文本后缀。
+
 <<< @/snippets/14-edit-check-feedback/packages/coding-tools/src/workspace/find.ts
 
 :::
@@ -89,6 +96,8 @@ Coding Agent 不只面对 TS。本篇把扩展名从扫描条件移到应用配�
 
 ::: details packages/coding-tools/src/workspace/search.ts：完整配套代码
 
+这个工厂返回内容搜索工具：实际读取本次范围的文本，按 query 返回有限行命中，模型据此继续调查。它沿用原字面量搜索，不因扩展名可配置就具备跨语言语义分析。
+
 <<< @/snippets/14-edit-check-feedback/packages/coding-tools/src/workspace/search.ts
 
 :::
@@ -96,6 +105,8 @@ Coding Agent 不只面对 TS。本篇把扩展名从扫描条件移到应用配�
 `packages/coding-tools/src/workspace/read.ts`：description 说明允许的文本后缀，源大小与行号输出保留。
 
 ::: details packages/coding-tools/src/workspace/read.ts：完整配套代码
+
+这个工厂返回精确路径的全文读取工具，内容仍经共享环境复查和有界读取，再带行号返回模型。说明随配置后缀更新，读取结果不自动授权修改。
 
 <<< @/snippets/14-edit-check-feedback/packages/coding-tools/src/workspace/read.ts
 
@@ -109,6 +120,8 @@ Coding Agent 不只面对 TS。本篇把扩展名从扫描条件移到应用配�
 
 替换请求有 path、oldText、newText 三个字段，验收请求则不需要字段。**完整替换 `packages/coding-tools/src/workspace/arguments.ts`。** 保留原 `stringArgument/stringParameters` 的调用方式；新增 `objectArgument` 检查字段集合，新增 `stringField` 提取有长度限制的字符串。原单字段函数改为调用这两个函数，继续拒绝纯空白查询。
 
+这份共用代码把工具请求对象检查和字符串提取分开：objectArgument 核对允许字段，stringField 取长度受限文本。替换工具用它取得 path/oldText/newText，验收工具用它确认空对象；它不会修改文件。
+
 <<< @/snippets/14-edit-check-feedback/packages/coding-tools/src/workspace/arguments.ts
 
 `objectArgument(value, ['path','oldText','newText'])`只接收这三个字段；`objectArgument(value, [])`要求空对象。`stringField`不随意 trim 替换文本，因为空白也可能是源码的一部分；newText 可以为空，用于删除唯一匹配的原文。
@@ -116,6 +129,8 @@ Coding Agent 不只面对 TS。本篇把扩展名从扫描条件移到应用配�
 ### 先匹配，再提交到副本
 
 新建 `packages/coding-tools/src/workspace/replace.ts`，写入完整代码：
+
+createReplaceTool 接收共享工作区与可写清单，返回 replace_text 工具。模型给出路径、唯一旧文本和新文本，工具核对当前原文后写入副本，成功返回路径和替换次数；下一次读取和验收使用的才是真正改变的内容。
 
 <<< @/snippets/14-edit-check-feedback/packages/coding-tools/src/workspace/replace.ts
 
@@ -139,6 +154,8 @@ Coding Agent 不只面对 TS。本篇把扩展名从扫描条件移到应用配�
 
 新建 `packages/coding-tools/src/process/run-check.ts`，写入完整代码：
 
+这份代码替验收工具管理一次真实进程：prepareCheck 复制并检查应用给定的命令，runCheck 接收命令、副本目录与信号，启动执行、收集有限输出，等待退出后返回 CheckResult。它不根据模型总结生成通过状态，也不自行决定任务是否完成。
+
 <<< @/snippets/14-edit-check-feedback/packages/coding-tools/src/process/run-check.ts
 
 `prepareCheck`在准备工具时复制程序路径和参数，拒绝相对程序路径与 NUL 字符。`runCheck`接收已经固定的命令、实际工作目录和本次运行信号，返回 `Promise<CheckResult>`。
@@ -159,6 +176,8 @@ close 事件到来时，工具清理计时器和取消监听。如果是已知�
 
 新建 `packages/coding-tools/src/workspace/check.ts`，写入完整代码：
 
+createCheckTool 将共享副本和固定命令包装成 run_check。模型只能提供空参数；Runtime 调用 execute 后，工具等待实际 runCheck，返回含退出码与输出的 JSON 文本，供 Runtime 关联请求 ID 并保存反馈。
+
 <<< @/snippets/14-edit-check-feedback/packages/coding-tools/src/workspace/check.ts
 
 模型提出 `run_check({})`，本地从闭包取得固定命令与同一个 workspace.root，再调用 runCheck。`result`接住真实进程结果，工具序列化后返回给 Runtime。
@@ -171,9 +190,13 @@ close 事件到来时，工具清理计时器和取消监听。如果是已知�
 
 **完整替换 `packages/coding-tools/src/workspace/index.ts`。** 保留公开 `createWorkspaceTools`；新增包内 `createInvestigationTools(workspace)`，把原三项只读工具的组装放入其中。旧工厂仍返回原来的三项工具。
 
+这份代码让只读工厂和修复工厂能复用同一组调查工具。createWorkspaceTools 仍替只读应用准备环境，包内 createInvestigationTools 则接收已准备环境直接返回三项工具，避免同一副本各自再建索引。
+
 <<< @/snippets/14-edit-check-feedback/packages/coding-tools/src/workspace/index.ts
 
 新建 `packages/coding-tools/src/workspace/code-task.ts`，写入完整代码：
+
+createCodeTaskTools 接收副本范围、可写清单和固定验收命令，创建共享环境后返回调查、替换和验收五项工具。应用把这组对象交给原 Runtime；根目录、写许可与进程配置不会因此进入通用循环。
 
 <<< @/snippets/14-edit-check-feedback/packages/coding-tools/src/workspace/code-task.ts
 
@@ -189,6 +212,8 @@ close 事件到来时，工具清理计时器和取消监听。如果是已知�
 
 新建 `fixtures/workspace-review/README.md`，写入完整内容：
 
+这份材料把正确的数量和折扣规则作为可读取文本放进副本。模型可以用它理解任务目标，外置验收用具体用例检查这些规则；README 本身不会执行或替应用判定完成。
+
 <<< @/snippets/14-edit-check-feedback/fixtures/workspace-review/README.md
 
 13 的四份源码继续保留，不修改原 invoice。README 是任务材料，接下来随源码一起复制。
@@ -196,6 +221,8 @@ close 事件到来时，工具清理计时器和取消监听。如果是已知�
 新建 `examples/code-review/src/check-invoice.mjs`，写入下面完整配套代码。它是本任务的业务验收，不是 Agent 执行机制，可直接复制后观察输入输出，无需把业务用例实现当成新的框架学习目标。
 
 ::: details examples/code-review/src/check-invoice.mjs：完整配套代码
+
+这个脚本接收副本目录，加载其中当前计算函数，逐项比较实际金额与固定预期，并输出用例 JSON，以退出码表示检查结果。验收工具接住这些真实输出，再反馈给模型；脚本保留在模型写范围之外。
 
 <<< @/snippets/14-edit-check-feedback/examples/code-review/src/check-invoice.mjs{js}
 
@@ -209,11 +236,15 @@ close 事件到来时，工具清理计时器和取消监听。如果是已知�
 
 新建 `examples/code-review/src/types/repair-session.ts`，写入完整代码：
 
+RepairSession 约定本应用准备完成后交给运行与报告的对象：副本 root、修改前原文 before 和任务 input。运行使用 input，报告用 root/before 读取并展示变化；这个类型不代表持久化会话或版本验收。
+
 <<< @/snippets/14-edit-check-feedback/examples/code-review/src/types/repair-session.ts
 
 `RepairSession`由应用创建并持有。root 指向这次副本，before 保留修改前的计算文件，input 沿用既有任务输入形状。它不是 Runtime 持久化状态，也不会自动把磁盘变更写入消息。
 
 新建 `examples/code-review/src/repair-session.ts`，写入完整代码：
+
+createRepairSession 替入口创建一次独立修复任务：复制受控材料、保存修改前原文、配置五项工具和外置验收，返回应用会话。调用方随后使用 input 启动 Runtime，停止后用同一 root 查看实际修改。
 
 <<< @/snippets/14-edit-check-feedback/examples/code-review/src/repair-session.ts
 
@@ -244,6 +275,8 @@ JS
 
 新建 `examples/code-review/src/repair-report.ts`，写入完整代码：
 
+reportRepair 接收应用会话与停止结果，读取当前副本、展示修改前后文本，并从运行历史展示实际验收记录。它返回是否有待审阅候选给入口设置退出结果；本章尚未证明最近通过对应最终内容，因此不自动接受交付。
+
 <<< @/snippets/14-edit-check-feedback/examples/code-review/src/repair-report.ts
 
 `reportRepair(session, result)`先显示原 Runtime 记录，再读副本当前内容 after。循环从实际 run_check 工具结果中取出观察，逐项显示状态、退出码和 stdout；decodeOutput 只改善 JSON 输出排版，非 JSON 或截断内容仍显示原文，不改变验收判断。
@@ -258,6 +291,8 @@ before 来自准备时，after 来自停止后的实际磁盘，二者展示本�
 
 新建 `examples/code-review/src/repair-run.ts`，写入完整代码：
 
+runRepair 接收创建 ModelCall 的函数，负责准备副本、配置同一次运行、等待原 Runtime，并将结果交给修复报告。真实与固定入口都调用它，取消监听在 finally 清理，运行后的副本位置保留供审阅。
+
 <<< @/snippets/14-edit-check-feedback/examples/code-review/src/repair-run.ts
 
 `runRepair`接收的是“创建 ModelCall 的函数”，让副本准备、模型配置和报告都处于同一个 try/finally 生命周期。入口仍设置六次模型调用、八项工具处理、60 秒整次期限，复用原事件与 Ctrl+C 信号。
@@ -268,9 +303,13 @@ before 来自准备时，after 来自停止后的实际磁盘，二者展示本�
 
 新建 `examples/code-review/src/repair-main.ts`，写入完整代码：
 
+这个真实入口把原服务连接工厂交给 runRepair，让模型实际选择调查、修改与验收动作。副本准备、控制和报告沿用同一流程，不在此另写修复策略。
+
 <<< @/snippets/14-edit-check-feedback/examples/code-review/src/repair-main.ts
 
 **完整替换根目录的 `examples/run.ts`。** 保留原默认 code-review、release-impact、workspace-review 和位置参数处理；增加 code-repair 的名称检查与入口分支。根 package.json 的 start/debug 保持不变。
+
+选择器增加 code-repair，让稳定的 start/debug 命令进入新的真实修复入口。其他任务分支仍保留；这里不配置修改内容或强制工具顺序。
 
 <<< @/snippets/14-edit-check-feedback/examples/run.ts
 
@@ -307,6 +346,8 @@ npm run debug -- --example code-repair
 新建 `examples/code-review/src/repair-observe.ts`，写入完整配套代码：
 
 ::: details examples/code-review/src/repair-observe.ts：完整配套代码
+
+这个无 Key 入口预写先错改、再修正的动作，使用同一个 runRepair 实际修改文件并执行检查。固定模型函数核对收到真实失败或通过后才交出下一条响应；它复现反馈链，不是自主模型能力证明。
 
 <<< @/snippets/14-edit-check-feedback/examples/code-review/src/repair-observe.ts
 
