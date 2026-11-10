@@ -6,9 +6,9 @@
 
 本篇完成后，要能从日志找到原请求、实际文件内容、第二次输入，以及模型的后续响应。工具成功只证明取得了内容；回答是否指出真正的问题，还要对照材料检查。
 
-## 先走完一次任务
+## 实施前，先走完一次任务
 
-先看本篇要审查的文件：`fixtures/code-review/src/cart.ts`。02只在任务里提到了路径，还没有创建这个文件；本篇会用下面这份真实材料。这里先阅读完整内容，第四步再按操作说明创建：
+先看本篇要审查的文件：`fixtures/code-review/src/cart.ts`。02 只在任务里提到了路径，还没有创建这个文件；本篇会用下面这份真实材料。这里先阅读完整内容，第四步再按操作说明创建：
 
 <<< @/snippets/03-tool-feedback/fixtures/code-review/src/cart.ts
 
@@ -16,17 +16,19 @@
 
 这份文件是独立的待审查材料，不属于 Agent 框架。任务中使用的 `src/cart.ts` 是应用提供给模型的可读名称，应用稍后会把它映射到 `fixtures/code-review/src/cart.ts`；模型不会仅凭这个名称就获得文件内容。
 
-应用只告诉模型任务和可用工具，不提前塞入源码。假设第一次返回下面这项请求——这是教学样本，ID 简写为 `call_01`，真实运行的文字、ID 和请求数量可能不同：
+应用只告诉模型任务和可用工具，不提前塞入源码。假设第一次返回下面这项请求，这是教学样本，ID 简写为 `call_01`，真实运行的文字、ID 和请求数量可能不同：
 
 ```json
 {"id":"call_01","name":"read_file","arguments":"{\"path\":\"src/cart.ts\"}"}
 ```
 
-接下来由本地程序完成三个动作：
+围绕这项请求，整篇实现按下面的顺序协作：
 
-1. Runtime 按名称找到应用注入的工具，解析参数，把 `{ "path": "src/cart.ts" }` 交给执行函数。
-2. 文件工具检查参数和允许的文件清单，读取真实文件。Runtime 把返回文本装进结果，并复制原请求 ID。
-3. 应用把原模型消息、工具结果按顺序放进记录，再把这份记录交给第二次模型调用。
+1. **应用发起第一次模型调用。** 输入只有任务和工具说明，没有源码。模型包把服务响应转换后，应用接到包含上述读取请求的完整模型消息。
+2. **Runtime 执行器把请求交给实际工具。** 按名称找到应用注入的工具，解析参数，将 `{ "path": "src/cart.ts" }` 交给执行函数。它只处理本次响应中的请求，不把所有注册工具都运行一遍。
+3. **文件工具取得实际内容，执行器组成反馈。** 工具检查字段和允许清单，再读取真实文件。执行器把返回文本装进结果，复制原请求 ID；已知失败则返回对应请求的失败反馈。
+4. **应用保存反馈，发起第二次调用。** 应用依次保存原模型消息与工具结果，将更新后的记录交给模型包。模型包把这些项目消息转换成服务协议，模型这次才有机会看见实际源码。
+5. **应用接住后续回答并检查。** 展示读取记录和模型响应，再对照源码检查结论。本篇仍由应用显式写两次调用，没有自动循环，也不能把读取成功直接当作审查正确。
 
 工具结果的项目内结构如下。`content` 这里用说明性文本缩写，实际运行会包含路径和完整文件内容；不要把这份样本写死到程序里。
 
@@ -111,21 +113,27 @@ git switch -c agent/chapter-03-tool-feedback
 
 后面接入执行时，Runtime 会根据实际执行情况，创建符合这个类型的结果对象；应用把结果对象追加到对话记录；下一次调用时，模型包读取记录中的结果对象，转换成服务要求的 `tool` 消息。类型定义与运行时创建的对象是两件事。
 
+这个类型约定一项本地执行反馈应包含哪些信息。执行器实际创建 ToolResultMessage，复制请求 ID、填写结果文本和失败标志；本篇由应用保存对象，模型包在第二次调用时将它编码成服务消息。放在模型包是因为它属于可发送的消息契约，文件本身不执行工具。
+
 <<< @/snippets/03-tool-feedback/packages/model/src/types/tool-results.ts
 
 Runtime 创建结果对象时，将原请求的 ID 和工具名分别填入 `toolCallId`、`toolName`，把工具返回文本或已知失败说明填入 `content`，并通过 `isError` 标记是否失败。下面的接口只是这些字段的约定；填入具体值的执行代码在第三步实现。
 
 **完整替换已有的 `packages/model/src/types/messages.ts`**：保留 `AssistantMessage` 及其已有字段；把旧 `Message` 接口中的用户部分命名为 `UserMessage`，让导出的 `Message` 变成三类消息的联合。以后保存模型消息要保存完整的 `AssistantMessage`，不能只存 `{ role: 'assistant', content }`。
 
+这份联合类型让同一条历史记录能够是用户任务、包含请求的模型消息，或者本地工具结果。应用按顺序保存这些值，编码器按 role 区分并转换，避免第二次调用丢掉第一轮请求与反馈。
+
 <<< @/snippets/03-tool-feedback/packages/model/src/types/messages.ts
 
-已有示例创建的 `{ role: 'user', content: prompt }` 仍有效。`Context.messages` 引用的仍是 `Message`，所以 `types/context.ts` 不用修改；`types/tools.ts/options.ts` 和响应解码也继续沿用02。
+已有示例创建的 `{ role: 'user', content: prompt }` 仍有效。`Context.messages` 引用的仍是 `Message`，所以 `types/context.ts` 不用修改；`types/tools.ts/options.ts` 和响应解码也继续沿用 02。
 
 ### 把这三种消息送到服务
 
 项目里叫 `toolResult`，DeepSeek 接口使用 `tool`；项目里叫 `toolCallId`，接口使用 `tool_call_id`。因此不能把内部记录原样展开进请求。
 
 新建 `packages/model/src/providers/deepseek-messages.ts`。它替 `complete` 创建发送用的消息数组。输入中同一条 `call_01` 请求与结果，输出中仍保持相同 ID，只改变服务需要的字段结构。
+
+encodeMessages 替请求函数把应用保存的项目历史转换成服务消息数组。传入“用户任务、模型读取请求、读取结果”三项，它会保留请求与结果的 ID 对应关系，返回新数组供 HTTP 正文使用，不修改或追加原历史。
 
 <<< @/snippets/03-tool-feedback/packages/model/src/providers/deepseek-messages.ts
 
@@ -135,11 +143,15 @@ Runtime 创建结果对象时，将原请求的 ID 和工具名分别填入 `too
 
 **完整替换 `packages/model/src/providers/deepseek.ts`**：保留 `complete`、响应解码与已有请求配置；新增 `encodeMessages` 导入，把原来直接复制 `context.messages` 的位置改为先转换历史，再附上总体要求。
 
+这份请求实现把刚才的历史编码接回 complete：应用交入累计消息与调用配置，函数发送完整记录、等待服务并返回一条模型消息。保存新返回值仍是本篇应用的工作，不由 complete 自动完成。
+
 <<< @/snippets/03-tool-feedback/packages/model/src/providers/deepseek.ts
 
 沿第二次调用看：`context.messages` 中已有三条记录，`encodeMessages` 返回三条服务消息，由 `history` 接住。`messages` 再在前面放一条 system 消息，`JSON.stringify` 把四条消息发送出去。HTTP 响应由 `response` 接住，`value` 接住解析后的原始数据，`decodeMessage(value)` 创建新的项目模型消息，最后 `complete` 的调用方接住返回值。转换与返回都没有替应用更新记录。
 
 **完整替换 `packages/model/src/index.ts`**：保留已有导出，消息导出增加 `UserMessage`，新增 `ToolResultMessage` 导出；两个协议转换模块仍是包内部实现。
+
+这个入口公开新的 ToolResultMessage 和更新后的消息类型，让应用、Runtime 与模型编码器使用同一份契约；它不保存任何运行记录。
 
 <<< @/snippets/03-tool-feedback/packages/model/src/index.ts
 
@@ -156,6 +168,8 @@ npm run build --workspace @ai-harness/model
 
 一个工具现在有两面：给模型看的名称、用途、参数说明，以及只在本地存在的执行函数。新建 `packages/runtime/src/types/tools.ts`，把这种组合命名为 `ExecutableTool`。
 
+ExecutableTool 约定本地工具既有模型可见的说明，也有程序可调用的 execute。应用将这样的对象交给执行器；执行器按模型请求选中它，等待 execute 返回文本。声明不是工具注册或执行动作。
+
 <<< @/snippets/03-tool-feedback/packages/runtime/src/types/tools.ts
 
 Runtime 把解析后的参数交给 `execute`，但数据仍标记为 `unknown`：能解析成 JSON，不代表它有正确的 `path`。每个工具要检查自己的参数，再执行动作。模型包只挑选工具说明字段发送，`execute` 不会传给模型。
@@ -164,6 +178,8 @@ Runtime 把解析后的参数交给 `execute`，但数据仍标记为 `unknown`�
 
 例如参数不是 JSON，或请求了未允许的路径，模型可以根据反馈重新决定。这些失败需要一段可公开的说明。新建 `packages/runtime/src/tool-error.ts`：
 
+这个错误类用来表达工具已经识别、可以安全反馈的失败。读取工具遇到不允许路径或预期 I/O 问题时创建它，执行器捕获后转成该请求的失败结果；其他异常仍向上抛出，不一律伪装成可继续的失败。
+
 <<< @/snippets/03-tool-feedback/packages/runtime/src/tool-error.ts
 
 `ToolExecutionError` 是明确的约定：工具主动抛出它，表示这条消息允许作为反馈。普通 `Error` 等未知异常不自动发给模型；可能是程序缺陷，不能一概冒充“可以重试的文件失败”。
@@ -171,6 +187,8 @@ Runtime 把解析后的参数交给 `execute`，但数据仍标记为 `unknown`�
 ### 执行完整批次
 
 新建 `packages/runtime/src/execute-tools.ts`。应用把第一次得到的完整模型消息和本地工具清单交给 `executeTools`；它返回一项或多项 `ToolResultMessage`，留给应用保存。以 `call_01` 为例，目标返回值是带 `toolCallId: 'call_01'` 和实际源码的结果数组。
+
+executeTools 接收一条包含请求的模型消息和本地工具清单，负责查名称、解析参数、顺序调用相应工具，并返回关联原请求 ID 的结果数组。应用接住该数组后才保存历史；执行器不会自己请求模型或运行未被请求的工具。
 
 <<< @/snippets/03-tool-feedback/packages/runtime/src/execute-tools.ts
 
@@ -189,6 +207,8 @@ Runtime 把解析后的参数交给 `execute`，但数据仍标记为 `unknown`�
 [![执行器与文件工具的逐项处理及失败出口](/diagrams/03-execution-flow.svg)](/diagrams/03-execution-flow.svg)
 
 新建 `packages/runtime/src/index.ts`，公开契约、已知错误与执行函数：
+
+Runtime 的入口公开工具契约、已知错误类和批次执行函数，供能力包及应用通过包名使用。它没有启动自动循环，本篇仍由应用决定何时执行和再次请求模型。
 
 <<< @/snippets/03-tool-feedback/packages/runtime/src/index.ts
 
@@ -216,6 +236,8 @@ npm run build --workspace @ai-harness/runtime
 
 新建 `packages/coding-tools/src/types/read-file.ts`：
 
+ReadFileOptions 约定应用提供的可读名称到实际文件位置的映射。文件工具工厂接收这份配置，模型只提交其中的可见名称；类型本身不扫描目录，也不开放任意磁盘路径。
+
 <<< @/snippets/03-tool-feedback/packages/coding-tools/src/types/read-file.ts
 
 例如应用把可见名称 `src/cart.ts` 对应到练习文件的本地位置。模型只选择这个名称，不提供磁盘根目录。换一份材料时，由应用更换映射，Runtime 不变。
@@ -234,6 +256,8 @@ npm run build --workspace @ai-harness/runtime
 
 新建 `packages/coding-tools/src/index.ts`：
 
+这个入口公开读取工具的配置类型与创建函数，让应用取得能力对象，再将它注入 Runtime；导入时不会立即读取材料。
+
 <<< @/snippets/03-tool-feedback/packages/coding-tools/src/index.ts
 
 现在先在仓库根目录构建文件工具包，再编写使用它的示例：
@@ -244,7 +268,9 @@ npm run build --workspace @ai-harness/coding-tools
 
 确认生成 `packages/coding-tools/dist/index.js` 和 `packages/coding-tools/dist/index.d.ts`。下面示例从 `@ai-harness/coding-tools` 导入时，读取的就是这些公开构建文件。此时模型包和 Runtime 已在前面的检查点构建完成，无需提前运行后面的整工程检查。
 
-**完整替换 `examples/code-review/src/tools.ts`**：删除02手写的 `reviewTools: readonly ToolDefinition[]` 说明对象和 `ToolDefinition` 导入；保留导出名 `reviewTools`，改为调用文件工具工厂并配置可读文件。
+**完整替换 `examples/code-review/src/tools.ts`**：删除 02 手写的 `reviewTools: readonly ToolDefinition[]` 说明对象和 `ToolDefinition` 导入；保留导出名 `reviewTools`，改为调用文件工具工厂并配置可读文件。
+
+这份代码把原来的说明数组换成实际读取工具：应用配置 src/cart.ts 对应的材料位置，工厂返回带 execute 的对象，并仍以 reviewTools 导出。接下来的执行器因此可以实际取得源码，而不只打印动作说明。
 
 <<< @/snippets/03-tool-feedback/examples/code-review/src/tools.ts
 
@@ -252,7 +278,7 @@ npm run build --workspace @ai-harness/coding-tools
 
 ### 先检查本地执行，不调用模型
 
-到这里，模型历史转换、Runtime、读取工具、材料与工具配置均已写完；`main.ts` 暂时还是02入口。先构建三个包，再从仓库根目录运行：
+到这里，模型历史转换、Runtime、读取工具、材料与工具配置均已写完；`main.ts` 暂时还是 02 入口。先构建三个包，再从仓库根目录运行：
 
 ```bash
 npm run build
@@ -274,13 +300,15 @@ JS
 
 ## 第五步：保存反馈，再调用模型
 
-**完整替换 `examples/code-review/src/main.ts`**：删除02只展示待执行请求的分支；保留模型配置和错误出口，新增 `messages` 记录、`executeTools` 调用、第二次 `complete` 与回答展示检查。`reviewTools` 的导入名保持不变。
+**完整替换 `examples/code-review/src/main.ts`**：删除 02 只展示待执行请求的分支；保留模型配置和错误出口，新增 `messages` 记录、`executeTools` 调用、第二次 `complete` 与回答展示检查。`reviewTools` 的导入名保持不变。
+
+这个入口把整次两轮往返串起来：创建任务历史，接住第一次模型请求，调用执行器并保存请求和结果，再把更新后的记录交给第二次 complete。最后的展示函数检查停止状态与可用文字；本篇衔接仍是显式两次调用，不是自动循环。
 
 <<< @/snippets/03-tool-feedback/examples/code-review/src/main.ts
 
 ### 用同一个 call_01 串起全部返回值
 
-第一次 `complete(context, options)` 从服务拿到原始响应，经02的 `decodeMessage` 转换，外部的 `first` 接住项目模型消息。若 `first.stopReason` 是 `toolUse`，它的 `toolCalls[0]` 就可能是前面那个 `call_01` 请求。
+第一次 `complete(context, options)` 从服务拿到原始响应，经 02 的 `decodeMessage` 转换，外部的 `first` 接住项目模型消息。若 `first.stopReason` 是 `toolUse`，它的 `toolCalls[0]` 就可能是前面那个 `call_01` 请求。
 
 `messages.push(first)` 是第一次真正更新应用记录的语句。它保存整个模型消息，包括文字、停止原因和全部动作；`complete` 的返回本身没有保存效果。`context.messages` 与这里的 `messages` 引用同一数组，后续追加会被下一次调用看到。`readonly` 只限制通过 `Context` 类型进行的操作，不把这个数组冻结。
 
@@ -300,13 +328,13 @@ messages.push(...results);
 
 入口中的 `ReviewStopped` 只装应用主动给出的说明，供终端显示。`showAnswer` 负责检查文本能否展示，不负责验证模型的结论。第一次没请求文件时，本任务直接停止，因为“先取源码”的要求没有满足；第一次截断时不执行任何请求。
 
-第二次若仍返回 `toolUse`，`showAnswer` 明确报“仍有待执行请求”，不再读取，也不启动第三次模型调用。两次调用是本篇显式展示反馈的边界，不保证所有任务都能在这里结束；04会把继续条件交给 Runtime 循环。
+第二次若仍返回 `toolUse`，`showAnswer` 明确报“仍有待执行请求”，不再读取，也不启动第三次模型调用。两次调用是本篇显式展示反馈的边界，不保证所有任务都能在这里结束；04 会把继续条件交给 Runtime 循环。
 
 若工具已知失败，失败结果同样进入第二次输入，模型可以解释缺少什么证据。但即使它返回了正常文本，入口仍因 `results` 中存在 `isError` 把本次审查标记为未交付。未知执行或服务异常只显示通用停止信息，调试器中检查原异常，不把内部正文直接写入默认日志。
 
 ## 第六步：运行时到底看什么
 
-沿用01准备好的环境配置，不展示或提交真实密钥。本节 `start` 会调用你配置的模型服务，由你自行执行；前面的本地检查不调用模型。
+沿用 01 准备好的环境配置，不展示或提交真实密钥。本节 `start` 会调用你配置的模型服务，由你自行执行；前面的本地检查不调用模型。
 
 ```bash
 npm run check
@@ -321,7 +349,7 @@ npm start
 | `本地工具结果` | `results` 中的每一项 | `toolCallId` 等于原 ID，内容与磁盘一致，`isError` 为 false |
 | `第二次输入记录` | 应用持有的 `messages` 数组 | 用户、原模型请求、所有结果的顺序；单工具时长度为 3 |
 | `第二次模型消息` | 第二次调用返回的 `second` | 是否仍要工具、是否截断、具体结论依据是什么 |
-| `模型文本（text）` | `second.content` | 是否指出数量问题，例如单价10、数量3应得30而不是10 |
+| `模型文本（text）` | `second.content` | 是否指出数量问题，例如单价 10、数量 3 应得 30 而不是 10 |
 
 这些日志没有直接打印原始 HTTP 响应。第一次模型消息和后面的输入记录都出现 `call_01`，只是同一请求在返回与保存后的两次展示，不代表执行两次。多项工具请求会分别打印结果，但第二次输入记录仍只在整批结束后打印一次。
 
@@ -346,7 +374,7 @@ npm start
 
 - 模型若请求原路径，本地结果应为 `isError: true`，内容含 `ENOENT`，不含系统绝对路径正文。
 - 第二次输入仍有同一个 ID 的失败结果；第二次模型消息是对失败信息的响应，没有取得源码。
-- 即使第二次有文字，入口最终也应报告“存在工具失败”，退出码非0。
+- 即使第二次有文字，入口最终也应报告“存在工具失败”，退出码非 0。
 
 如果第一次没有请求工具，先按实际分支记录；这次运行尚未触发文件失败路径。需要精确检查读取失败时，可运行第四步的本地命令，它使用固定请求且不付费。
 

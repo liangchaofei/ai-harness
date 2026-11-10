@@ -1,19 +1,17 @@
-// 【新增文件】模型只能请求运行已配置验收，不能提交shell命令。
+// 【修改】工具协议保留，实际检查由同一会话提供并记录来源。
 import type { ExecutableTool } from '@ai-harness/runtime';
-import type { CheckCommand, CheckResult } from '../types/code-task';
-import type { Workspace } from '../types/workspace';
-import { runCheck } from '../process/run-check';
+import type { CheckEvidence } from '../types/evidence';
 import { objectArgument } from './arguments';
 
-/** 非零退出也是程序实际结果，作为正常工具内容反馈给下一轮。 */
-export function createCheckTool(workspace: Workspace, command: CheckCommand): ExecutableTool {
+/** 只接收{}；check负责真实执行和来源，工具负责把观察交给Runtime。 */
+export function createCheckTool(check: (signal?: AbortSignal) => Promise<CheckEvidence>): ExecutableTool {
   return {
     name: 'run_check',
-    description: '运行应用预设的验收程序，参数为{}；检查status、exitCode及stdout/stderr，用失败反馈决定下一步。',
+    description: '运行应用固定验收，参数为{}；反馈含实际结果、revision与stable。之后修改内容需重新验收。',
     parameters: { type: 'object', properties: {}, additionalProperties: false },
     async execute(value, signal) {
       objectArgument(value, []);
-      const result: CheckResult = await runCheck(command, workspace.root, signal);
+      const result = await check(signal);
       return JSON.stringify(result);
     },
   };

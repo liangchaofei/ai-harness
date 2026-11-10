@@ -131,6 +131,8 @@ git switch -c agent/chapter-08-runtime-events
 
 本次只给包内 `executeToolBatch` 增加第三个可选参数 `notify`，并在三处通知：开始处理、已形成结果、未知异常。这个函数不知道运行 ID，也不负责打印；循环稍后把它接到刚写好的派发器。
 
+这个执行器仍接收本轮请求和准备好的工具表，返回实际反馈数组；新增职责是在请求开始处理、已有结果或发生异常时，调用传入的通知函数。循环把这些摘要接给应用观察，执行器不负责打印或写入整次历史。
+
 <<< @/snippets/08-runtime-events/packages/runtime/src/tools/execute.ts
 
 沿 `read_1` 走一次：整批 ID 检查通过，执行器先通知 `tool_start`，再解析 `call.arguments` 并查 schema；参数合格才真正调用 `tool.execute(value)`。读取成功后，源码仍放进原来的 `ToolResultMessage.content`，由 `results.push(...)` 保存到**当前批次的局部数组**；这时通知 `tool_end / isError:false`。
@@ -157,6 +159,8 @@ git switch -c agent/chapter-08-runtime-events
 
 原来 `RunResult` 中的消息记录和停止联合改名为包内使用的 `RunOutcome`；新的公开 `RunResult` 保留这些字段，再附 `runId` 和 `observerErrors`。`ModelCall`、`RunFailure` 与工具类型不变，应用原来判断 `result.status` 的代码仍然适用。
 
+这份类型让应用在运行前提供 onEvent，在停止后取得 runId 和观察失败计数。Runtime 负责填充这些字段，报告读取它们；事件摘要与最终消息历史仍是不同数据。
+
 <<< @/snippets/08-runtime-events/packages/runtime/src/types/run.ts
 
 `RunOutcome` 让循环先表达“为什么停、已经保存什么”，最终再添加本次运行的观察信息。它不是额外运行一次，也不是另一份模型消息；后面 `finish` 接收这个对象并返回 `RunResult`。
@@ -166,6 +170,8 @@ git switch -c agent/chapter-08-runtime-events
 ### 接入循环
 
 完整替换 `packages/runtime/src/run-agent.ts`。原有的状态保存、调用上限和停止判断保留；新增派发器与局部 `finish`，所有原来的停止 `return` 改为经 `finish(...)` 返回。`finish` 只服务当前运行，所以放在函数内部，直接使用本次的派发器，不新增全局管理器。
+
+这份循环替应用继续推进原任务，同时在实际动作位置发出通知。它接收原任务配置和可选观察函数，保存完整模型及工具结果，最终返回带运行身份的结果；局部 finish 负责通知停止，确保不同停止分支都能交回应用。
 
 <<< @/snippets/08-runtime-events/packages/runtime/src/run-agent.ts
 
@@ -293,6 +299,8 @@ run_end       status:answered  modelCalls:2
 
 文件是 `examples/code-review/src/main.ts`：
 
+代码审查入口把 printEvent 交给原 runAgent，运行中接收进度，停止后再将结果交给原审查报告。任务、文件工具和模型连接不变，进度函数不替它保存历史或验证结论。
+
 <<< @/snippets/08-runtime-events/examples/code-review/src/main.ts
 
 模型接入仍由 `createModelCall()` 创建，框架不选择任务或服务。`runAgent` 运行中调用 `printEvent` 展示进度；返回后调用 `reportRun` 展示记录并检查源码证据。两者输出发生在不同时间，不是执行了两次模型或两次工具。
@@ -300,6 +308,8 @@ run_end       status:answered  modelCalls:2
 ### 发布调查入口
 
 文件是 `examples/release-impact/src/main.ts`：
+
+发布调查入口复用同一个事件接收函数，运行中展示查询处理进度，停止后仍按发布与服务查询证据报告。它验证观察能力可用于第二个任务，不另建发布专用循环。
 
 <<< @/snippets/08-runtime-events/examples/release-impact/src/main.ts
 

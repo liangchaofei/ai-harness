@@ -1,3 +1,7 @@
+---
+pageClass: model-streaming
+---
+
 # 09 流式模型与完整消息
 
 本篇实现：**模型还没说完，应用就能显示已经生成的文字；模型提出工具动作时，程序仍等完整请求检查通过后再执行。** 沿用代码审查与发布调查，接入两种服务的真实流式协议，不增加业务任务。
@@ -62,6 +66,8 @@ git switch -c agent/chapter-09-model-streaming
 
 新建 `packages/model/src/types/stream.ts`：
 
+ModelStreamEvent 约定模型包交出的两类值：新增文字供即时预览，done 携带完整模型消息供后续保存和执行。适配器实际创建事件，应用连接逐项接住；定义事件类型不会启动网络读取。
+
 <<< @/snippets/09-model-streaming/packages/model/src/types/stream.ts
 
 例如模型包先产出 `{type:'text_delta', text:'我先读取'}`，最后产出 `{type:'done', message:完整消息}`。类型声明不会拼接数据，也不会保存历史；真正创建这两类值的是后面的服务适配器。
@@ -75,6 +81,8 @@ git switch -c agent/chapter-09-model-streaming
 ### 帧的类型
 
 新建 `packages/model/src/types/sse.ts`。这是共享读取器与服务适配器之间的包内数据，不从包入口公开：
+
+SseFrame 约定一次完整数据帧里的事件名与文本数据。共享读取器创建它，服务适配器再解析其中的原生 JSON；它既不是一次网络字节块，也不是可直接执行的模型请求。
 
 <<< @/snippets/09-model-streaming/packages/model/src/types/sse.ts
 
@@ -132,11 +140,15 @@ JS
 
 新建 `packages/model/src/providers/shared/request-response.ts`。响应头到达后返回 `Response`，不提前调用 `response.json()`，因为流式接入还要继续读取响应体。
 
+requestResponse 替 JSON 和流式适配器完成共同的连接及 HTTP 检查：接收地址、已构造的请求和传输函数，返回成功 Response。调用方随后选择读 JSON 或逐帧读流，避免在共同层提前把响应体消耗掉。
+
 <<< @/snippets/09-model-streaming/packages/model/src/providers/shared/request-response.ts
 
 `await fetcher(...)` 返回并不表示整段响应体已经读完。这里先判断连接与 HTTP 状态；非成功状态不读取服务错误正文，并释放未使用的响应体。成功响应交给上层，JSON 与 SSE 各自继续消费。
 
 完整替换已有的 `packages/model/src/providers/shared/request-json.ts`：保留 JSON 读取和错误归类，把共同的连接及 HTTP 检查交给刚新增的函数。
+
+这个函数继续为非流式调用返回解析后的未知 JSON，但把建立连接和检查状态委托给 requestResponse。原响应解码器接住 JSON，再创建项目消息；这条路径不会消费同一份 SSE 流。
 
 <<< @/snippets/09-model-streaming/packages/model/src/providers/shared/request-json.ts
 
@@ -189,11 +201,15 @@ providers/
 
 ::: details packages/model/src/providers/deepseek/deepseek-messages.ts 【移动并修改导入】
 
+DeepSeek 编码器接收累计项目历史，返回服务 messages；请求构造函数使用它发送此前请求和工具反馈。这里只移动文件与调整导入，编码行为沿用原实现。
+
 <<< @/snippets/09-model-streaming/packages/model/src/providers/deepseek/deepseek-messages.ts
 
 :::
 
 ::: details packages/model/src/providers/deepseek/deepseek-response.ts 【移动并修改导入】
+
+DeepSeek 解码器检查服务返回的文字、动作和停止原因，返回项目模型消息，供完整调用及流式拼接结束时使用。文件移动不增加一次请求或工具执行。
 
 <<< @/snippets/09-model-streaming/packages/model/src/providers/deepseek/deepseek-response.ts
 
@@ -201,11 +217,15 @@ providers/
 
 ::: details packages/model/src/providers/anthropic/anthropic-messages.ts 【移动并修改导入】
 
+Anthropic 编码器把项目历史转换成服务的内容块消息数组，交给请求构造函数；此处只更换文件位置，保留原协议转换。
+
 <<< @/snippets/09-model-streaming/packages/model/src/providers/anthropic/anthropic-messages.ts
 
 :::
 
 ::: details packages/model/src/providers/anthropic/anthropic-response.ts 【移动并修改导入】
+
+Anthropic 解码器从完整的服务消息取得项目文字与工具请求，返回统一消息。后面的流适配器在拼接完整后也会使用它，移动文件不改变消息契约。
 
 <<< @/snippets/09-model-streaming/packages/model/src/providers/anthropic/anthropic-response.ts
 
@@ -221,11 +241,15 @@ providers/
 
 新建 `packages/model/src/providers/deepseek/request.ts`，写入完整代码：
 
+这份请求构造函数接收上下文、已检查配置和是否流式的开关，返回 deepseek 服务所需的 RequestInit。完整调用和流调用共用它来组织鉴权、消息与生成设置；它只创建发送数据，后面的 HTTP 函数才实际请求。
+
 <<< @/snippets/09-model-streaming/packages/model/src/providers/deepseek/request.ts
 
 输入仍是同一个 `Context` 与已检查配置。函数创建 `RequestInit`，将 `streaming` 放到服务的 `stream` 字段；完整调用传 `false`，流式调用传 `true`。历史转换、工具说明、请求头、关闭思考和 30 秒单请求时限保持原规则。函数只构造数据，真正发送发生在 `requestResponse` 或 `requestJson`。
 
 新建 `packages/model/src/providers/anthropic/request.ts`：
+
+这份请求构造函数接收上下文、已检查配置和是否流式的开关，返回 anthropic 服务所需的 RequestInit。完整调用和流调用共用它来组织鉴权、消息与生成设置；它只创建发送数据，后面的 HTTP 函数才实际请求。
 
 <<< @/snippets/09-model-streaming/packages/model/src/providers/anthropic/request.ts
 
@@ -235,11 +259,15 @@ Anthropic 仍使用自己的消息块编码和工具字段，不把 DeepSeek 请
 
 ::: details packages/model/src/providers/deepseek/deepseek.ts 【修改】
 
+这个非流式入口继续替调用方取得一次完整结果：使用共用请求构造发送 deepseek 请求，等待 JSON，解码后返回项目消息。新增流能力不会把这个入口改成逐片输出。
+
 <<< @/snippets/09-model-streaming/packages/model/src/providers/deepseek/deepseek.ts
 
 :::
 
 ::: details packages/model/src/providers/anthropic/anthropic.ts 【修改】
+
+这个非流式入口继续替调用方取得一次完整结果：使用共用请求构造发送 anthropic 请求，等待 JSON，解码后返回项目消息。新增流能力不会把这个入口改成逐片输出。
 
 <<< @/snippets/09-model-streaming/packages/model/src/providers/anthropic/anthropic.ts
 
@@ -264,6 +292,8 @@ Anthropic 仍使用自己的消息块编码和工具字段，不把 DeepSeek 请
 
 新建 `packages/model/src/providers/deepseek/stream.ts`：
 
+streamDeepSeek 把服务的逐帧响应转换成项目流事件。它接收上下文与配置，文字到达时交出 text_delta，工具字段按索引保留在局部草稿；服务终止且消息检查完成后才交出 done。上层连接消费这些事件，Runtime 不会见到或执行半份参数。
+
 <<< @/snippets/09-model-streaming/packages/model/src/providers/deepseek/stream.ts
 
 `response` 是已取得响应头的 HTTP 响应；`for await` 从共享读取器接住一帧后，才解析 `frame.data`。适配器把文字追加到局部 `content`，同时 `yield text_delta` 给应用预览。工具片段只追加到 `calls` 中，不向 Runtime 交出可执行请求。
@@ -278,9 +308,13 @@ Anthropic 仍使用自己的消息块编码和工具字段，不把 DeepSeek 请
 
 新建 `packages/model/src/types/anthropic-stream.ts`。这里的 `json` 是待拼接文本，不是已经验证的工具参数：
 
+AnthropicBlock 描述适配器内部正在拼接的内容块：文本块存文字，工具块存 ID、名称和参数草稿。服务事件处理函数创建和更新这些值，完整终止后才将它们转换成项目消息，不把草稿公开为工具请求。
+
 <<< @/snippets/09-model-streaming/packages/model/src/types/anthropic-stream.ts
 
 再新建 `packages/model/src/providers/anthropic/stream.ts`：
+
+streamAnthropic 负责按服务的块生命周期接收文字与工具参数，返回与 DeepSeek 相同的项目事件。它在块开始时创建草稿，增量到达时追加，收到完整消息终止后才交出 done；公共流入口随后将事件传给应用连接。
 
 <<< @/snippets/09-model-streaming/packages/model/src/providers/anthropic/stream.ts
 
@@ -371,6 +405,8 @@ JS
 
 完整替换 `packages/runtime/src/run-agent.ts`。保留原循环与全部停止判断，只在调用 `options.callModel` 时传入第二个函数，把文字接到 08 的受保护派发器：
 
+循环仍等待一次 ModelCall 的完整返回，变化是把中途预览接到事件派发器。文字片段因此能到达应用；只有最终返回的 AssistantMessage 会写入历史，并作为工具执行或停止判断的依据。
+
 <<< @/snippets/09-model-streaming/packages/runtime/src/run-agent.ts
 
 下面的关键语句已在完整文件中，只用于对照，不需再次写入：
@@ -387,6 +423,8 @@ JS
 
 新建 `examples/shared/stream-model.ts`。它负责把模型包的多次流事件接回 Runtime 需要的一次完整返回；两个真实任务和固定观察共用，不各自复制消费循环：
 
+createStreamingModelCall 将模型包的异步事件转换成 Runtime 需要的 ModelCall：接收调用配置，返回一个连接函数；连接函数逐项消费事件，将文字交给预览回调，最后把 done 中的完整消息返回循环。它不保存运行历史。
+
 <<< @/snippets/09-model-streaming/examples/shared/stream-model.ts
 
 先辨认两个方向：`for await` 接住的是模型包事件；`onTextDelta` 是 Runtime 刚传入的通知函数。收到 `text_delta` 时，连接调用通知函数再继续等下一项；收到 `done` 时，`return event.message` 结束本次 `ModelCall`，消息回到 Runtime 的 `message` 变量。
@@ -394,6 +432,8 @@ JS
 这条返回不会自动保存历史。还要回到上一节的 `messages.push(message)` 才保存；连接函数不拥有对话记录，也不调用具体工具。调用方提前结束迭代时会向生成器传递退出，共享 reader 在 `finally` 清理；不是让 HTTP 读取留在后台继续无限运行。
 
 新建 `examples/code-review/src/check-stream.ts`：
+
+这个无网络入口将固定 SSE 传输、共用流连接和真实文件工具接到原 runAgent。运行中显示实际解码出的预览，停止后展示完整历史，用来观察“片段到达”和“完整消息可执行”之间的边界；模型动作顺序由样本给定。
 
 <<< @/snippets/09-model-streaming/examples/code-review/src/check-stream.ts
 
@@ -430,6 +470,8 @@ run_end            answered / 模型调用 2 次
 ## 第八步：让两个真实入口使用相同接线
 
 完整替换 `examples/shared/model.ts`：保留提供商选择、对应凭据、模型名与 256 输出 token 配置，只把末尾的连接换成 `createStreamingModelCall(options)`。
+
+这个应用工厂仍选择当前服务与对应凭据，最后返回共用流连接。两个 main 因此都获得能报告预览、又能返回完整消息的 ModelCall，无需各自实现流消费循环。
 
 <<< @/snippets/09-model-streaming/examples/shared/model.ts
 
@@ -1054,3 +1096,9 @@ git push -u origin agent/chapter-09-model-streaming
 ```
 
 提交、推送不等于合并部署，也不代表已验证真实模型任务质量或独立掌握。
+
+<style>
+.model-streaming .vp-doc .custom-block.details summary {
+  overflow-wrap: anywhere;
+}
+</style>

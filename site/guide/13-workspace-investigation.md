@@ -12,13 +12,14 @@ pageClass: workspace-investigation
 
 本篇准备一个独立练习项目，入口是 `fixtures/workspace-review/src/main.ts`。它导出金额函数 `invoiceTotal`，当前实现放在 `src/checkout/invoice.ts`，折扣规则放在 `src/pricing/policy.ts`。还有一份 `src/legacy/invoice.ts` 历史材料。稍后会先创建全部文件，再使用它们。
 
-任务告诉模型从 `src/main.ts` 出发审查金额计算，不直接给出后面两个实际文件。模型可能先读入口，也可能先查文件名。假设它查找包含 `invoice` 的路径，工具会返回当前文件与历史文件；这只能说明存在两个候选位置，不能决定哪份属于当前调用链。
-
-接着，模型搜索 `discountRate`，取得导入、调用和定义所在的路径及行号。搜索预览提供线索，完整读取才让模型看见入口的导出、计算函数和规则之间的关系。规则是满 10 件打九折，计算函数却把折扣连乘两次：单价 100、数量 10 时，当前得到 810，正确应为 900。
-
-每一项查找、搜索或读取，都是模型提出请求、Runtime 实际调用工具。工具返回的文本与原请求 ID 组成 `toolResult`，Runtime 保存后才交给下一轮模型。查找函数不会替模型选择当前实现，搜索函数不会自动理解 TypeScript 调用关系，模型必须依据实际内容连接这些事实。
-
-最终，应用接住 `RunResult`，检查入口、计算文件和规则文件都有成功全文读取证据，再人工核对路径、行号、数值和结论。模型正常停止、工具成功与结论正确，仍是三种不同判断。
+1. **应用选择工作区，工具准备有限索引。** 应用只给根目录；工具扫描允许的普通 TS 文件，保存可用相对路径。索引表示“有哪些可调查位置”，没有把全文提前交给模型，也不是固定内容快照。
+2. **模型根据任务找线索。** 任务从 src/main.ts 出发，不直接给出当前计算与规则的实际路径。
+   - **2.1 查候选路径。** 模型请求查找 invoice，工具可能同时返回当前和历史文件。此时只能知道位置存在，不能判断哪份属于运行链。
+   - **2.2 搜索内容。** 模型请求搜索 discountRate，工具返回导入、调用和定义的路径、行号与预览。这是字面量匹配，不是自动理解调用关系。
+   - **2.3 读取完整材料。** 模型根据线索选择全文读取，通过入口导出、计算函数与规则确认实际关系；不会由查找函数替它选择实现。
+3. **每项实际结果进入下一轮。** Runtime 调用请求对应的工具，工具返回文本，执行器关联原 ID。Runtime 保存结果后，再把更新的消息交给模型；模型才能利用刚取得的信息继续选动作。
+4. **根据材料给出结论。** 当前规则满 10 件打九折，计算却连续应用两次折扣：100×10 得到 810，正确应为 900。这是沿材料判断的结果，不把历史文件当成当前代码。
+5. **应用接住停止结果并核对证据。** 检查入口、计算文件、规则文件都有成功全文读取，再人工核对路径、行号、数值和结论。模型正常停止、工具成功与结论正确仍是不同判断。
 
 ![从候选路径、内容命中到完整源码与审查结论的一条可能调查轨迹](/diagrams/13-investigation.svg)
 
@@ -48,17 +49,25 @@ Pi 也把文件读取、路径查找和内容搜索分为不同工具，并由�
 
 新建 `fixtures/workspace-review/src/main.ts`，写入完整代码：
 
+这是练习项目的已知入口，只导出当前金额函数。模型先读它，就能沿实际导出位置继续调查；它不会把同名历史文件选为当前实现。
+
 <<< @/snippets/13-workspace-investigation/fixtures/workspace-review/src/main.ts
 
 新建 `fixtures/workspace-review/src/checkout/invoice.ts`，写入完整代码：
+
+这份当前计算材料使用单价、数量和导入的折扣率计算金额，故意重复打折。调查任务要把它与入口及规则连接起来，文件工具只读取这些原文。
 
 <<< @/snippets/13-workspace-investigation/fixtures/workspace-review/src/checkout/invoice.ts
 
 新建 `fixtures/workspace-review/src/pricing/policy.ts`，写入完整代码：
 
+这份规则材料按数量返回折扣率，供当前金额函数使用。读到它，才能核对满 10 件应打一次九折，不能只凭计算文件里的函数名猜规则。
+
 <<< @/snippets/13-workspace-investigation/fixtures/workspace-review/src/pricing/policy.ts
 
 新建 `fixtures/workspace-review/src/legacy/invoice.ts`，写入完整代码：
+
+这是同名历史候选，保留旧金额写法以供辨认。路径查找可能找到它，但当前入口没有导向它；本材料用于观察调查是否依据运行链，而不是看见第一个文件就下结论。
 
 <<< @/snippets/13-workspace-investigation/fixtures/workspace-review/src/legacy/invoice.ts
 
@@ -74,6 +83,8 @@ Pi 也把文件读取、路径查找和内容搜索分为不同工具，并由�
 
 新建 `packages/coding-tools/src/types/workspace.ts`，写入完整代码：
 
+这份契约区分应用提供的根目录配置，与工厂内部创建的共享工作区。后者保存候选路径和读取能力，供三项工具使用；它不会保存源码快照或模型历史。
+
 <<< @/snippets/13-workspace-investigation/packages/coding-tools/src/types/workspace.ts
 
 应用创建 `WorkspaceOptions`，其中的 `root` 必须是明确的绝对目录位置。模型不会收到这个磁盘位置，只会看到相对路径与工具说明。
@@ -86,6 +97,8 @@ Pi 也把文件读取、路径查找和内容搜索分为不同工具，并由�
 
 新建 `packages/coding-tools/src/files/read-text.ts`，写入完整代码。它承接原 `readAllowedFile`，改名为 `readTextFile` 并供包内使用；新增可选 `flags`，旧清单调用仍用默认 `r`，工作区稍后选择不跟随最终文件链接的标志。已知 I/O 失败增加 `ELOOP`，反馈不包含真实磁盘路径。
 
+readTextFile 接收工具已经选定的实际位置、可选信号与打开标志，取得普通文件的有界 UTF-8 原文并返回。旧清单工具与新工作区工具都复用它，路径是否允许仍由各自上层先检查。
+
 <<< @/snippets/13-workspace-investigation/packages/coding-tools/src/files/read-text.ts
 
 这仍然是原来的有界读取过程：打开句柄后检查普通文件，循环填充最多 16 KiB 加 1 字节的缓冲，超过限制就不返回内容，退出时关闭句柄。额外 1 字节用来区分“恰好 16 KiB”和“还有更多内容”。这里没有先把任意大文件全部读入内存再截掉。
@@ -93,6 +106,8 @@ Pi 也把文件读取、路径查找和内容搜索分为不同工具，并由�
 `signal` 在读取前后检查；它不会强杀任意文件系统操作。`finally` 负责已经取得的句柄，即使大小检查或取消抛错，也要关闭。Node 文件句柄读取与关闭接口见[Node 22 文件系统文档](https://nodejs.org/docs/latest-v22.x/api/fs.html#filehandlereadbuffer-offset-length-position)。
 
 **完整替换 `packages/coding-tools/src/read-file.ts`。** 保留 `createReadFileTool`、参数检查、清单映射和原输出格式；删除该文件里的 `MAX_BYTES/KNOWN_IO_ERRORS/readAllowedFile`，导入刚创建的 `readTextFile`。`execute` 中只把读取调用名称替换为 `readTextFile(target, signal)`，不增加行号，不改变旧任务的使用方式。
+
+旧清单工具继续接收模型可见的路径名称，核对应用配置后调用共用读取函数，返回原格式的文件内容。抽出实际读取并不把旧任务自动改成目录扫描，也不扩大它的可读清单。
 
 <<< @/snippets/13-workspace-investigation/packages/coding-tools/src/read-file.ts
 
@@ -108,9 +123,9 @@ Pi 也把文件读取、路径查找和内容搜索分为不同工具，并由�
 
 新建 `packages/coding-tools/src/workspace/open.ts`，写入完整代码：
 
-<<< @/snippets/13-workspace-investigation/packages/coding-tools/src/workspace/open.ts
+openWorkspace 接收应用选择的根目录，建立有限普通文件索引，并返回 paths/read 组成的共享环境。后面的三项工具从同一索引取候选，真正读取时再复查路径，避免把启动索引当作永久不变的许可。
 
-`openWorkspace` 替应用完成两项工作：准备一次路径范围，返回可反复使用的读取函数。它接收根目录和可选的准备阶段信号，异步返回 `Workspace`。
+<<< @/snippets/13-workspace-investigation/packages/coding-tools/src/workspace/open.ts
 
 以本篇材料为例，`realpath(options.root)` 取得实际根目录，`visit([])` 逐层发现四份 TS 文件。`files`保存类似 `src/checkout/invoice.ts → 根目录下该文件实际位置` 的映射，`paths`返回排序后的相对路径。排序便于稳定观察，不代表相关性排名。
 
@@ -136,6 +151,8 @@ Pi 也把文件读取、路径查找和内容搜索分为不同工具，并由�
 
 新建 `packages/coding-tools/src/workspace/arguments.ts`，写入完整代码：
 
+stringArgument 从请求对象取得一个有长度限制的非空字符串，stringParameters 为同样的字段创建工具 schema。三个工具用它们统一声明和读取 query/path；辅助函数不搜索文件或保存状态。
+
 <<< @/snippets/13-workspace-investigation/packages/coding-tools/src/workspace/arguments.ts
 
 `stringParameters` 创建模型可见的字段说明，Runtime 会用同一 schema 执行本地检查。`stringArgument` 则在具体工具里取出字符串，即使应用直接调用 `execute`、绕过 Runtime，也拒绝坏对象、额外字段和纯空白字符串。
@@ -145,6 +162,8 @@ Pi 也把文件读取、路径查找和内容搜索分为不同工具，并由�
 ### 路径查找：有哪些候选文件
 
 新建 `packages/coding-tools/src/workspace/find.ts`，写入完整代码：
+
+createFindTool 接收共享工作区，返回按路径子串查候选的工具。模型提供 query，执行时从已知路径筛选并返回候选与截断标志；结果供模型选择下一步，不自动确认当前调用链。
 
 <<< @/snippets/13-workspace-investigation/packages/coding-tools/src/workspace/find.ts
 
@@ -161,6 +180,8 @@ Pi 也把文件读取、路径查找和内容搜索分为不同工具，并由�
 字面量搜索就是按原样查找一段文字，`.`、`*` 等符号不会被解释成正则表达式。
 
 新建 `packages/coding-tools/src/workspace/search.ts`，写入完整代码：
+
+createSearchTool 创建内容字面量搜索工具。模型给 query，工具实际读取索引内文件，返回命中的路径、行号与预览，供模型继续选择全文；它不解析 TypeScript 语义，也不将预览当成整份源码。
 
 <<< @/snippets/13-workspace-investigation/packages/coding-tools/src/workspace/search.ts
 
@@ -187,6 +208,8 @@ Pi 也把文件读取、路径查找和内容搜索分为不同工具，并由�
 
 新建 `packages/coding-tools/src/workspace/read.ts`，写入完整代码：
 
+createWorkspaceReadTool 为选中的精确相对路径提供全文读取。模型给 path，工具经共享环境复查后返回带行号文本，Runtime 将它保存为反馈，模型再用完整上下文核对入口与规则关系。
+
 <<< @/snippets/13-workspace-investigation/packages/coding-tools/src/workspace/read.ts
 
 请求 `{ path: 'src/checkout/invoice.ts' }` 时，`source` 接住共享工作区返回的实际源码。工具在输出首行写相对路径，再给每行加 `1: / 2: ...` 编号。第 7 行会显示连乘两次折扣的 return 语句，模型可以据此引用实际位置。
@@ -198,6 +221,8 @@ Pi 也把文件读取、路径查找和内容搜索分为不同工具，并由�
 ## 第五步：一次创建并公开这组能力
 
 新建 `packages/coding-tools/src/workspace/index.ts`，写入完整代码：
+
+createWorkspaceTools 替应用准备一次工作区，再将同一环境交给查找、搜索和读取工具，返回三项可执行工具。应用只给根目录，无需为每个文件单独创建映射；函数不会启动模型循环。
 
 <<< @/snippets/13-workspace-investigation/packages/coding-tools/src/workspace/index.ts
 
@@ -234,6 +259,8 @@ JS
 
 新建 `examples/code-review/src/workspace-task.ts`，写入完整代码：
 
+这个任务工厂选择根目录并等待三项工具准备好，返回审查目标、工具和当前材料的报告要求。入口随后把任务交给原 Runtime；已知入口是调查起点，实际计算与规则仍要通过内容取得。
+
 <<< @/snippets/13-workspace-investigation/examples/code-review/src/workspace-task.ts
 
 任务工厂调用公共 `createWorkspaceTools`，默认根目录指向本篇独立材料。给模型的用户消息只指出入口和审查目标，没有列出实际计算文件、规则路径或工具顺序。工具描述也不会把全部文件名提前列给模型。
@@ -246,6 +273,8 @@ JS
 
 新建 `examples/code-review/src/workspace-main.ts`，写入完整代码：
 
+这个真实入口准备工作区任务，配置原模型连接、预算、事件与 Ctrl+C，调用一次 runAgent。停止后调用任务报告并清理监听，目录扫描和文件 I/O 不放在循环内部。
+
 <<< @/snippets/13-workspace-investigation/examples/code-review/src/workspace-main.ts
 
 入口先建立取消监听，在 `try` 中等待工作区准备，再创建原共享模型连接。`const result = await runAgent(...)`接住运行结果；循环内部仍检查工具、保存请求和结果、携带新消息继续模型调用。
@@ -253,6 +282,8 @@ JS
 模型包、Runtime 和运行策略都沿用前面：最多六次模型调用、八项工具处理、整次 60 秒，事件实时展示，Ctrl+C 协作退出，`finally`清理进程监听。准备失败也会走入口的清理，且不会伪造为模型已收到的工具结果。
 
 **完整替换根目录下的 `examples/run.ts`。** 保留默认 code-review、release-impact 及位置参数处理；在名称检查中增加 workspace-review，再增加对应入口分支。根 `package.json` 的 start/debug/build/check 不改。
+
+示例选择器读取 --example，选中 workspace-review 时导入新入口，原 code-review 和 release-impact 仍可运行。它只选择应用，不决定模型查哪些文件，也不改变 start/debug 的用途。
 
 <<< @/snippets/13-workspace-investigation/examples/run.ts
 

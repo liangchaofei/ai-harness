@@ -37,3 +37,7 @@ model定义模型输入输出契约，适配器认识服务协议；Runtime创�
 13：应用root → coding-tools.createWorkspaceTools → openWorkspace的files映射/paths集合/read函数 → 三个工具共享。find仅查路径；search逐文件read当前内容返回命中及截断；read_file从同一索引取文件，复查路径、有界读取并附行号。上述都是工具事实来源，不保存Agent历史；原Runtime创建toolResult、按原ID保存并带入后续Context。准备信号与每次execute运行信号分别传入。readTextFile抽自原清单读取，默认r保持兼容，workspace用O_NOFOLLOW；旧任务和发布调查继续。
 
 14：应用mkdtemp/cp→RepairSession{root,before,input}→createCodeTaskTools→共享Workspace{paths,resolve,read,extensions,root}。replace_text检查写清单、唯一oldText、16KiB，临时文件→复读→rename；run_check固定spawn/无shell/env空/cwd副本→管道和限制→close→CheckResult。非零退出是正常工具观察（isError false/status failed），Runtime保存关联ID反馈再请求模型。原循环/提供商不改。运行signal到直接子进程，取消不伪造当前结果也不撤销已完成写入。report读取after并展示历史check，保留副本，未做最终版本绑定。
+
+## 15：实际变更与对应验收进入任务接受
+
+应用createRepairSession→coding-tools createCodeTaskSession；tools供Runtime顺序执行，baseline/lastCheck由同会话私有持有。run_check：清旧证据→capture(before)→原runCheck→capture(after)→保存CheckEvidence→JSON反馈→Runtime消息→模型后续动作。停止后应用inspect→重新采集current/changes→acceptRepair。模型包/Runtime不认识内容标识与金额验收；业务规则仍在examples/fixtures。恢复/隔离/原子快照仍未实现。

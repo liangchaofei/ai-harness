@@ -22,7 +22,15 @@
 
 应用只把发布 ID 和查询工具说明交给模型，不提前把服务清单和负责人塞进用户消息。模型要通过工具取得新材料，再决定还缺哪些记录。工具响应里的 `record` 是材料文本，不是模型生成的解释。
 
-一种可能的调查过程是：
+把这份材料接入原内核，整篇实现分为五个环节：
+
+1. **应用加载材料并创建查询工具。** 启动时读取两份 JSON，保存为本地记录映射；为发布和服务分别创建按 ID 查询的工具。完整记录留在应用侧，没有提前放进模型输入。
+2. **模型先取得发布记录。** 输入只给目标发布 ID。模型提出查询后，原执行器调用查询工具，返回发布实际文本；Runtime 保存反馈，下一轮模型据此得到变更服务的 ID。
+3. **模型继续取得服务记录。** 根据新信息选择要查的服务。一次响应若含两项请求，原执行器顺序处理，结果各自关联请求 ID，再由 Runtime 整批写入历史。
+4. **应用接住摘要并检查本任务证据。** 要求目标发布和预期服务的成功查询齐全，才展示摘要；负责人和依赖是否忠实于材料，仍需对照检查。
+5. **用两个入口检验复用。** 原代码审查仍读源码，新调查只查记录；它们共享模型连接、记录展示与同一个 Runtime，任务材料和接受条件各自保留。
+
+下面用一种可能轨迹对照中间的模型调用：
 
 | 模型调用 | 得到的决定 | 本地动作与下一次可见信息 |
 |---|---|---|
@@ -83,6 +91,8 @@ npm run build
 
 材料 JSON、模型参数和工具结果都需要先判断是不是非空、非数组对象。新建 `examples/release-impact/src/validation.ts`，让后面三个位置复用这一步：
 
+isRecord 接收材料解析值、查询参数或结果解析值，返回它是否为非空非数组对象。三个调用位置先用这个共同判断，再检查各自字段；函数不读取材料，也不保证对象已经符合某个具体协议。
+
 <<< @/snippets/05-runtime-reuse/examples/release-impact/src/validation.ts
 
 `isRecord` 只检查这层形状，不保证 `id` 是字符串或 `record` 非空。加载器、查询函数和证据检查仍分别核对自己需要的字段。这个辅助函数留在当前示例内部，不改变模型包原有的内部校验文件，也不增加公共工具包。
@@ -105,6 +115,8 @@ npm run build
 
 新建 `examples/release-impact/src/types/tools.ts`：
 
+LookupToolOptions 约定查询工具工厂需要的名称、说明、参数描述和记录映射。应用负责加载材料并创建这份配置，工厂据此创建可执行工具，模型不会直接拿到整张本地映射。
+
 <<< @/snippets/05-runtime-reuse/examples/release-impact/src/types/tools.ts
 
 这是当前示例创建工具时的配置类型。`records` 是应用刚加载的映射；名称和说明给模型使用，完整记录留在本地。类型声明不会加载文件或创建执行函数。
@@ -124,6 +136,8 @@ npm run build
 ### 应用组装两类工具
 
 新建 `examples/release-impact/src/tools.ts`：
+
+createReleaseTools 在应用准备阶段加载发布与服务材料，分别配置 lookup_release 和 lookup_service，返回两项工具给 runAgent。模型真正提出某个 ID 的请求后，工具才从已加载映射查出对应记录并返回。
 
 <<< @/snippets/05-runtime-reuse/examples/release-impact/src/tools.ts
 
@@ -177,6 +191,8 @@ JS
 
 新建 `examples/shared/model.ts`，把 04 中应用绑定模型配置的逻辑放到这里：
 
+createModelCall 替两个应用统一准备当前模型配置，返回符合 Runtime 契约的调用函数。Runtime 后续传入每轮上下文时，这个函数才调用 complete 并返回模型消息；创建连接函数本身不请求服务。
+
 <<< @/snippets/05-runtime-reuse/examples/shared/model.ts
 
 两个应用启动时分别调用 `createModelCall()`，取得自己的调用函数。创建函数时读取配置，但不会立即请求服务；Runtime 后面传入最新 `context` 时，返回的函数才执行 `complete(context, options)`。参数和返回消息形状都沿用 04，不给 Runtime 增加提供商分支。
@@ -187,6 +203,8 @@ JS
 
 新建 `examples/shared/print-run.ts`。把 04 的 `describeFailure`、消息遍历、停止状态和异常打印放在这里，不加入具体任务的接受条件：
 
+printRun 接收已停止的运行结果，输出模型消息、工具结果、调用次数与停止原因。两个应用共用这段展示，但任务能否接受仍由各自 reportRun 判断，打印函数不修改历史或重新执行工具。
+
 <<< @/snippets/05-runtime-reuse/examples/shared/print-run.ts
 
 `printRun(result)` 接收已经结束的运行，只遍历已有记录并输出信息，没有返回“任务通过”的布尔值。模型响应、工具结果、停止原因和受控异常的展示逻辑与 04 一致；不打印任意异常正文或整个包含异常的结果对象。
@@ -195,11 +213,15 @@ JS
 
 **完整替换 `examples/code-review/src/report-run.ts`**：删除本地 `describeFailure` 和公共日志遍历，新增 `printRun` 导入；保留 `reportRun`、`requiredPath`、成功读取检查与最终文本展示。
 
+这个报告接住 Runtime 结果与目标源码名称，先调用公共记录展示，再确认正常回答且成功取得目标源码，返回是否满足当前审查的基础证据。原来的源码证据要求保留，不因新增查询任务而改成通用规则。
+
 <<< @/snippets/05-runtime-reuse/examples/code-review/src/report-run.ts
 
 `printRun` 先打印过程，随后这个应用仍按原规则接受：必须是 `answered`，且成功读到目标源码，才展示最终审查文字并返回 `true`。文件位置、工具、任务和审查条件都没有改变。
 
 **完整替换 `examples/code-review/src/main.ts`**：删除本地 `complete/ModelCall` 导入、`model/options` 配置和手写调用闭包；新增 `createModelCall` 导入。保留审查目标、提示词、文件工具、`runAgent` 调用和接受检查。
+
+代码审查入口改为取得共用的模型连接，再将原目标与文件工具交给同一个 runAgent。它接住最终结果后仍调用审查报告，并据布尔返回设置失败退出码，不参与发布调查。
 
 <<< @/snippets/05-runtime-reuse/examples/code-review/src/main.ts
 
@@ -233,6 +255,8 @@ lookup_service / inventory-api
 
 新建 `examples/release-impact/src/main.ts`：
 
+这个新入口准备发布 ID、调查目标和两项查询工具，再调用原 runAgent。运行结果返回后，交给发布调查的报告核对记录证据；预期服务清单只用于报告，不提前告诉模型该按哪几步查询。
+
 <<< @/snippets/05-runtime-reuse/examples/release-impact/src/main.ts
 
 应用先用 `createReleaseTools` 取得加载好记录的工具，再把任务、总体要求、工具和 `createModelCall()` 返回的模型函数交给已有 `runAgent`。循环、反馈与停止都由原内核处理；返回值由应用的 `result` 接住，再传给调查自己的 `reportRun`。检查返回 `false` 时，入口把 `process.exitCode` 设为 1；返回 `true` 仅表示当前最低证据条件满足，摘要内容仍需对照。
@@ -246,6 +270,8 @@ lookup_service / inventory-api
 ### 只允许选择已配置的两个应用
 
 新建 `examples/run.ts`：
+
+这个入口读取命令行中的示例名称，只导入允许列表中的对应应用。任务选中后仍由各自 main 启动运行；选择器不包含模型决策或工具执行逻辑，后续 start/debug 共用这一个位置。
 
 <<< @/snippets/05-runtime-reuse/examples/run.ts
 

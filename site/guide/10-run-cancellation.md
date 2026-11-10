@@ -1,3 +1,7 @@
+---
+pageClass: run-cancellation
+---
+
 # 10 主动取消一次运行
 
 本篇实现：**应用发出停止请求后，正在等待的模型和工具协作退出；Runtime 保留此前完成的记录，拒绝迟到结果，并停止后续动作。** 两个原有任务都可以按 Ctrl+C 取消，不需要给循环加入任务分支。
@@ -65,11 +69,15 @@ git switch -c agent/chapter-10-run-cancellation
 
 ::: details packages/model/src/providers/deepseek/request.ts
 
+这份请求构造代码把本次运行的外部信号接到 deepseek HTTP 请求，同时保留单请求 30 秒限制。返回的仍是请求配置，由共享 HTTP 层发送；它既不创建应用控制器，也不决定整次运行停止状态。
+
 <<< @/snippets/10-run-cancellation/packages/model/src/providers/deepseek/request.ts
 
 :::
 
 ::: details packages/model/src/providers/anthropic/request.ts
+
+这份请求构造代码把本次运行的外部信号接到 anthropic HTTP 请求，同时保留单请求 30 秒限制。返回的仍是请求配置，由共享 HTTP 层发送；它既不创建应用控制器，也不决定整次运行停止状态。
 
 <<< @/snippets/10-run-cancellation/packages/model/src/providers/anthropic/request.ts
 
@@ -91,6 +99,8 @@ Runtime 后面只把“自己的运行信号已经取消”判定为 `cancelled`
 
 **完整替换** `packages/model/src/providers/shared/request-response.ts`：保留 HTTP 失败分类与响应体清理；增加发送前检查，以及自定义 `fetch` 迟到返回时取消未使用响应体的处理。
 
+这个 HTTP 边界接收可能已取消的请求，检查后才发送；即使传输函数迟到返回，也先判断信号，取消未使用的响应体再抛回。上层不会把取消之后的 Response 当作可用结果继续解析。
+
 <<< @/snippets/10-run-cancellation/packages/model/src/providers/shared/request-response.ts
 
 `init.signal` 是请求构造器生成的组合信号。已经触发时，函数在 `fetcher` 之前退出；如果传入的自定义传输忽略通知，它回来之后还会再检查一次，释放响应体，不让调用方消费迟到响应。原生 `fetch` 会响应取消；这项补充也约束本地替身和可信自定义传输的返回边界。
@@ -99,11 +109,15 @@ Runtime 后面只把“自己的运行信号已经取消”判定为 `cancelled`
 
 ::: details packages/model/src/complete.ts
 
+完整调用入口接收带 signal 的配置，照常选择服务，但只在信号仍有效时把最终消息交回。若等待期间取消，它将取消原因抛给调用者，避免 Runtime 收到一条迟到的成功响应。
+
 <<< @/snippets/10-run-cancellation/packages/model/src/complete.ts
 
 :::
 
 **完整替换** `packages/model/src/stream.ts`：保留公共异步生成器与服务选择，将原来直接 `yield*` 的位置换为逐项消费；每次交出 `text_delta` 或 `done` 前检查信号，异常时也先判断取消。
+
+这个公共流入口逐项接住所选适配器的事件，在向外交出每片预览或完整 done 前检查取消。应用连接收到的是仍有效的事件；取消后退出迭代，不把剩余草稿或迟到结果交给 Runtime。
 
 <<< @/snippets/10-run-cancellation/packages/model/src/stream.ts
 
@@ -149,6 +163,8 @@ JS
 
 **完整替换** `packages/runtime/src/types/run.ts`：`RunAgentOptions` 增加 `signal`，`RunOutcome` 增加 `cancelled` 分支；原停止状态与 `RunResult` 的运行身份、观察失败数保留。
 
+这些类型让应用在运行选项传入只读信号，也能从返回结果识别 cancelled。控制器仍归应用，Runtime 只消费信号并创建停止结果；定义类型本身不会停止任何等待。
+
 <<< @/snippets/10-run-cancellation/packages/runtime/src/types/run.ts
 
 例如应用可能收到下列**结构示意**，不需要写入文件：
@@ -186,6 +202,8 @@ JS
 
 **完整替换** `packages/runtime/src/tools/execute.ts`：保留名称、JSON、schema 检查及已知失败反馈。`executeTools` 增加可选第三参数信号；内部 `executeToolBatch` 保留第三参数通知函数，在第四参数接信号。执行前、等待后、整批返回前增加取消门禁。
 
+执行器继续顺序处理本批请求，但把同一信号传给工具，并在开始下一项和接收返回时检查取消。正常返回结果数组；取消则用专门对象带回此前完成项，循环保存这些事实后停止，不给取消项伪造反馈。
+
 <<< @/snippets/10-run-cancellation/packages/runtime/src/tools/execute.ts
 
 沿刚才的三个请求看返回值：
@@ -212,6 +230,8 @@ signal?.throwIfAborted();
 执行器现在会区分完整结果、取消与未知失败。循环需要分别接住它们，并保留之前“只有完整模型消息才写入历史”的规则。
 
 **完整替换** `packages/runtime/src/run-agent.ts`。保留工具准备、模型调用注入、停止联合、事件派发与历史追加；新增取消出口及等待前后门禁。`modelCalls` 在开始通知完成且信号仍有效后才增加，避免没有真正调用模型就计数。
+
+这份循环将应用信号传给每次模型和工具等待，在取消后停止推进，保留此前完整历史并返回 cancelled。它等待当前操作退出，不把“已经通知取消”立即当作“操作已经结束”，也不会自动撤销工具副作用。
 
 <<< @/snippets/10-run-cancellation/packages/runtime/src/run-agent.ts
 
@@ -252,6 +272,8 @@ Runtime 传出了信号，真正的等待也要收到它。
 
 **完整替换** `packages/coding-tools/src/read-file.ts`：保留清单、16 KiB 限制、普通文件检查与已知 I/O 错误反馈。`execute` 接第二参数信号，`readAllowedFile` 接并检查信号；已有的文件句柄 `finally` 保留。
 
+这个实际读取工具接收 Runtime 传来的信号，在有界读取的等待之间检查取消，成功才返回原有源码文本。已打开句柄仍在 finally 关闭；执行器还会在接收返回时检查，防止最后一刻取消的结果进入后续运行。
+
 <<< @/snippets/10-run-cancellation/packages/coding-tools/src/read-file.ts
 
 例如取消发生在 `await file.read(...)` 期间，这个底层调用不会被本篇强杀；它结束后紧接着检查信号，抛出取消，再进入 `finally` 关闭已打开的句柄。文件很小，本篇一次等待有范围限制，但这不等于能承诺任意磁盘故障下的退出时间。
@@ -261,6 +283,8 @@ Runtime 传出了信号，真正的等待也要收到它。
 ### 模型连接：不要把通知丢在包与循环之间
 
 **完整替换** `examples/shared/stream-model.ts`：保留工厂、预览通知、唯一完整消息返回；新增接收第三参数，并传入 `stream` 配置。
+
+这个连接函数将 Runtime 的第三参数 signal 放进模型流配置，继续转发预览并返回唯一完整消息。它补上循环与模型包之间的信号传递，否则 HTTP 等待不会仅因 Runtime 已知取消而自动退出。
 
 <<< @/snippets/10-run-cancellation/examples/shared/stream-model.ts
 
@@ -300,11 +324,15 @@ npm run check
 
 **代码审查入口：完整替换 `examples/code-review/src/main.ts` 的全部内容：**
 
+代码审查入口创建 Ctrl+C 通知源，把信号交给原运行入口；正常停止才调用任务报告，取消则使用退出码 130。无论运行怎样退出，finally 都移除监听，不由 Runtime 直接控制终端进程。
+
 <<< @/snippets/10-run-cancellation/examples/code-review/src/main.ts
 
 **发布调查入口：完整替换 `examples/release-impact/src/main.ts` 的全部内容。展开下方代码后写入该文件：**
 
 ::: details examples/release-impact/src/main.ts【修改】
+
+发布调查使用同样的应用取消接线，保留本来的查询工具和接受规则。这个入口负责信号来源、运行后展示与监听清理，具体等待如何响应仍由模型包、Runtime 和工具协作完成。
 
 <<< @/snippets/10-run-cancellation/examples/release-impact/src/main.ts
 
@@ -340,6 +368,8 @@ npm start -- --example release-impact
 新建目录 `examples/code-review/src/cancellation/`，再新建其中的 `fixtures.ts`，写入完整代码。这里的 `fixtures` 是本地观察装置，不是运行时工具库；名字和预写 ID 不进入核心。
 
 ::: details examples/code-review/src/cancellation/fixtures.ts
+
+这份装置创建两类受控依赖：能在预览期间等待的本地传输，以及包含真实读取和固定等待的工具场景。观察入口选择依赖与取消时机，再交给原 Runtime；装置不另写执行循环，也不代表模型自主选取这些动作。
 
 <<< @/snippets/10-run-cancellation/examples/code-review/src/cancellation/fixtures.ts
 
@@ -1009,3 +1039,9 @@ git push -u origin agent/chapter-10-run-cancellation
 
 提交推送不代表任务质量或掌握已经验证，也不包含合并部署。
 
+
+<style>
+.run-cancellation .vp-doc .custom-block.details summary {
+  overflow-wrap: anywhere;
+}
+</style>
