@@ -35,9 +35,9 @@ export function runSession(
     callModel,
     signal,
     onEvent,
-    // 沿用原预算；CLI接入不承诺模型在这个额度内一定完成任务。
-    maxModelCalls: 6,
-    maxToolCalls: 8,
+    // 为调查差异、修改、验收和反馈后的回答留出有限余量。
+    maxModelCalls: 8,
+    maxToolCalls: 12,
     timeoutMs: 60_000,
   });
 }

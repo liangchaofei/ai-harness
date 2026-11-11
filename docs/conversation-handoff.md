@@ -1,0 +1,68 @@
+# ai-harness课程对话交接
+
+更新于2026-11-11。本文件用于新对话快速接续，实际状态必须重新检查，不以此替代git和源码。
+
+## 项目和目标
+
+仓库：/Users/curry/Desktop/github/ai-harness。工具默认cwd可能是/Users/curry/Documents/ChatGPT/agent-harness，调用命令请显式workdir。旧ci、ci-harness不是当前项目。
+
+学习者是前端工程师，用TypeScript系统学习三份Agent岗位JD的技术：从模型/Agent基础到Runtime、可复用Harness、独立npm包、Coding CLI及桌面应用。参考Pi固定源码渐进实现，不以最小demo为目标，不按篇数估算岗位掌握比例。
+
+总体8阶段见site/roadmap.md和docs/course-design.md；JD对应见docs/jd-learning-map.md。当前第三阶段内容13–18已提供，第四阶段19–23能力安排见docs/stage-04-plan.md。未来接口尚未冻结，每篇设计前读对应固定Pi源码。保持同一底座与apps/coding-cli，不重新做另一套CLI。
+
+## 必须先检查
+
+1. git status --short --branch。18开始前agent/chapter-17-coding-cli跟踪同名远程且干净；当时实际源码已有17。当前由真实检查确定。
+2. AGENTS.md、site/roadmap.md、site/learning-method.md、docs/learning-state.md、docs/review-queue.md、docs/system-map.md、docs/stage-03-plan.md、docs/stage-03-verification.md、docs/stage-04-plan.md。
+3. 最近章节site/guide/18-stage-delivery.md及docs/chapter-18-{plan,pi-audit,verification,learning-card}.md；相关apps/packages/examples/fixtures实际代码。若用户尚在实现18，不直接跳19。
+
+## 权限和分工
+
+- 学习者亲写packages/、apps/、examples/、fixtures/及根学习配置；助手写site/教程、site/snippets候选、docs记录。候选在临时目录验证，不覆盖学习源码。除非用户明确授权代改源码。
+- 每章分支由学习者创建。未经要求不切分支、不暂存提交、不推送、合并、PR或部署。中文提交详细heredoc及对应push命令要提供，由学习者执行。
+- 不读真实.env、不展示凭据、不自动调用付费模型。可用固定模型/原生HTTP替身加真实I/O做作者验证，必须标清不是模型自主能力。
+- 不以继续、构建通过、提交、固定样本成功或“懂了”认定掌握。真实质量、独立迁移和延迟复用另取证。
+
+## 教学风格
+
+读取并使用/Users/curry/.codex/skills/technical-tutorial-writer/SKILL.md和/Users/curry/.codex/skills/ai-agent-tutor/SKILL.md及必要参考。writer已嵌入固定Waza write，不自动同步上游。
+
+每篇开头说明具体功能、阶段位置；实施前按实际数据流用分层编号讲完整过程，编号按真实关系组织，不强套2.x。讲清谁提出、谁执行、谁保存、下一步谁使用。
+
+每段完整代码前说明整体功能、输入/输出和下一使用方；后面解释关键实现与具体数据，不只逐行复述。长解释可配同源关键摘录。文件名与新增/替换/移动位置准确，完整替换前点明标识符变化，不引用不存在的草稿文件。
+
+类型放各包src/types并按职责拆分，中文JSDoc解释用途和状态。核心/工具/应用/材料分离，按职责分目录，不堆主文件也不机械每函数建文件。不要为未来创建空包/通用工具框架。
+
+代码不要压缩：控制分支展开，长参数/对象分行，逻辑阶段留空行。新增/修改标签只标本章变化，不保留上一章标签。正文与章末完整代码同源。读者不做单测教学，作者可临时断言验证；保留断点、可逆故障和小迁移。
+
+多步新逻辑按需要配整体图，真实渲染检查；日志解释具体ID/字段/哪一轮能证明什么，不把意图或工具成功当成任务完成。公开正文不写聊天修订、个人进度或本机绝对路径。
+
+## 近期实现与证据
+
+模型包支持DeepSeek/Anthropic，原生SSE，返回完整内部消息；Runtime有顺序批次、工具参数schema与已知失败反馈、事件、取消、整次时限、模型/工具预算；coding-tools提供有限文本调查、精确替换、固定进程验收及内容来源。
+
+13有限工作区；14副本修改/实际验收反馈；15同会话内容标识与当前验收接受；16可选update_plan；17独立单次Coding CLI；18新页面路径任务阶段迁移。
+
+CLI只接可信小型无依赖ESM材料，来源已有package.json拒绝；固定Node+tsx外置脚本、无shell；不代表OS沙箱/任意仓库/依赖安装/恢复/自动合入。当前预算8模型/12工具/60秒（18真实实践后由6模型/8工具调整），单次模型输出上限1024 token。计划默认关，未证实真实质量收益。当前第八次模型仍请求工具会callLimit且不执行最后批次。
+
+代码任务会话私有保存基线和最近真实验收；inspect重新读当前内容。接受需要answered、允许且非空的变化、匹配当前内容的稳定验收、进程退出0及stdout JSON passed:true。计划完成和模型总结都不能替代证据。
+
+16真实尾部：第6次提出update_plan后callLimit，计划revision0，无修改，notRun，acceptedfalse；停止行为正常但任务未完成，缺前五轮轨迹，不盲目加预算。
+
+17曾用npm exec报模型配置失败：它不自动读.env。真实运行统一优先在根目录：
+node --env-file=.env apps/coding-cli/dist/cli.js --task fixtures/code-tasks/cart.json
+用户尚未提供后续自主成功轨迹，不记真实任务完成。
+
+18候选site/snippets/18-stage-delivery：175文件，核心与接受规则不改；report/report.ts补已存请求反馈展示，model.ts输出上限1024，session/run.ts为8模型/12工具/60秒。新fixtures/route-repair含README/入口/当前与历史；route.json和check-route.mjs外置八项规则验收。真实任务不预设模型动作；本对话后续用户授权实际调用，助手已取得一次6模型/8工具的answered/accepted true轨迹；调整后的8模型预算验证见chapter-18-verification.md。
+
+18固定观察examples/stage-delivery：repair4模型/6工具，先真实失败后修正通过；stale5/7通过后加注释未重验拒绝；recheck6/8重验接受。固定入口不进真实CLI，不算自主表现。作者验证与最终网站结果见chapter-18-verification.md。
+
+## 网站与本地检查
+
+VitePress1.6.4，base=/ai-harness/，cleanUrls=true，http://127.0.0.1:4174/ai-harness/。启动前检查端口，必要时npm run docs:dev。导航site/.vitepress/config.mts，新章同步首页/路线/职责/JD/学习记录。交付前候选check、正常失败行为、站点build、浏览器桌面手机及图片渲染、学习源码保护检查。
+
+固定Pi参考提交：8efd314fa3d3232ce197d8d7a6a5660530b9d83e，badlogic/pi-mono。每章对应源码已读情况看pi-audit，不凭同名API宣称等价。
+
+若桌面浏览工具不可用，可用/tmp/ai12-browser指针中的playwright-core，Chrome路径：/Users/curry/Library/Caches/ms-playwright/chromium-1228/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing。临时文件可能已清理，先检查不要硬依赖。
+
+2026-11-11第18篇重写：正文改为“第三阶段实践验收”，以现有CLI接入新材料、审阅请求反馈与当前验收、保存结果为主；固定响应演示移至可选附录，不要求跟写，不重复175份继承文件。该次重写未改候选行为与实际学习源码；后续用户已授权预算修订与真实诊断，学习者独立迁移与掌握仍待取证，不以固定演示或本次文案改写提升状态。

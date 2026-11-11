@@ -14,13 +14,13 @@ export function createModelCall(): ModelCall {
           provider,
           apiKey: process.env.DEEPSEEK_API_KEY?.trim() ?? '',
           model: process.env.DEEPSEEK_MODEL?.trim() || 'deepseek-flash',
-          maxTokens: 256,
+          maxTokens: 1024,
         }
       : {
           provider,
           apiKey: process.env.ANTHROPIC_API_KEY?.trim() ?? '',
           model: process.env.ANTHROPIC_MODEL?.trim() || 'claude-haiku-5-5',
-          maxTokens: 256,
+          maxTokens: 1024,
         };
   if (!options.apiKey) {
     throw new Error('缺少服务凭据。');

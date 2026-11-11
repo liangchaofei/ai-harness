@@ -49,3 +49,9 @@ model定义模型输入输出契约，适配器认识服务协议；Runtime创�
 本次未改runAgent、执行器、事件类型或model/coding-tools；计划不调度工具、不新增harness空包。计划revision与源码revision异义，前者更新序号，后者内容摘要。false-complete可answered但不接受；固定开销对照不证明模型质量。
 
 17候选：bin(cli.ts)→runCli→parseArgs→loadTask→createModelCall→prepareSession→runSession→原runAgent→reportSession/inspect→acceptTask→退出码。CLI只依赖三个公开包；examples/cli-observe反向导入应用并注入固定模型。fixtures/code-tasks保存四字段配置与外置验收。参数不合法/帮助不调用模型；SIGINT由CLI控制器转换，finally释放监听。原Runtime/工具状态与协议保持，独立目录非系统隔离。
+
+18阶段复用：新的route.json→原loadTask/prepareSession/runSession→原model/runtime/coding-tools。reportSession读取result.messages展示assistant请求及按ID的toolResult，再inspect当前证据→原acceptTask。新业务验收从副本公开入口执行八项规则；core无route/cart分支。examples/stage-delivery只注入固定模型，不进入真实CLI。历史展示不是持久化、恢复或自动回放。
+
+2026-11-11第18篇重写：正文改为“第三阶段实践验收”，以现有CLI接入新材料、审阅请求反馈与当前验收、保存结果为主；固定响应演示移至可选附录，不要求跟写，不重复175份继承文件。候选行为与实际学习源码不改。真实服务未执行、学习者独立迁移与掌握仍待取证，不以固定演示或本次文案改写提升状态。
+
+2026-11-11真实诊断更新：用户授权实际运行与预算修订。原6模型/12工具/1024输出配置一次6模型/8工具接受；调整为8模型/12工具/60秒后一次5模型/9工具接受，八项验收通过。用户callLimit尾部表明第6次验收被末轮拦，固定同轨迹6轮拒绝/8轮第7次回答接受已验证；原程序计数和拒绝符合规则，改的是应用预算余量。真实成功不替代学习者独立迁移证据，旧“作者未运行真实服务”状态由本条更新。下一次复习区分toolLimit、callLimit、输出length和当前证据匹配；不自动开始19。
