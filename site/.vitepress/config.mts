@@ -38,6 +38,8 @@ export default defineConfig({
         { text: '13 让 Agent 调查有限工作区', link: '/guide/13-workspace-investigation' },
         { text: '14 修改代码，让真实验收反馈进入下一轮', link: '/guide/14-edit-check-feedback' },
         { text: '15 用当前变更和匹配的验收证据交付', link: '/guide/15-evidence-delivery' },
+        { text: '16 让 Agent 记录计划，并根据反馈修订进度', link: '/guide/16-task-plan' },
+        { text: '17 让 Coding CLI 使用同一个 Agent 内核', link: '/guide/17-coding-cli' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },
