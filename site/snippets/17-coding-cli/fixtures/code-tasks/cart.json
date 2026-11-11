@@ -1,0 +1,8 @@
+{
+  "source": "../code-review",
+  "prompt": "审查并修复src/cart.ts的total函数：商品金额应为单价乘数量后求和。只改src/cart.ts，运行验收，根据真实输出修正，最后说明变化和结果。",
+  "writablePaths": [
+    "src/cart.ts"
+  ],
+  "checkScript": "./check-cart.mjs"
+}

@@ -47,3 +47,5 @@ model定义模型输入输出契约，适配器认识服务协议；Runtime创�
 应用createRepairSession(options.planning)→runtime.createPlanSession→tool加入input.tools/read留应用。模型提出update_plan→原schema门禁→计划parse/序号检查→current替换→JSON反馈→原执行器关联ID→原循环保存→下一轮Context。应用tool_end成功→read深拷贝→printPlan。原CodeTaskSession仍独占基线/lastCheck/inspect，acceptRepair不读计划。
 
 本次未改runAgent、执行器、事件类型或model/coding-tools；计划不调度工具、不新增harness空包。计划revision与源码revision异义，前者更新序号，后者内容摘要。false-complete可answered但不接受；固定开销对照不证明模型质量。
+
+17候选：bin(cli.ts)→runCli→parseArgs→loadTask→createModelCall→prepareSession→runSession→原runAgent→reportSession/inspect→acceptTask→退出码。CLI只依赖三个公开包；examples/cli-observe反向导入应用并注入固定模型。fixtures/code-tasks保存四字段配置与外置验收。参数不合法/帮助不调用模型；SIGINT由CLI控制器转换，finally释放监听。原Runtime/工具状态与协议保持，独立目录非系统隔离。

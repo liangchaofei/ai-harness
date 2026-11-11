@@ -1,0 +1,8 @@
+{
+  "source": "../workspace-review",
+  "prompt": "从src/main.ts调查金额计算，按README规则修复重复折扣。只修改获准的当前计算文件，保留数量和折扣阈值；运行验收，依据真实输出修正或说明限制。最后说明改动与验收结果。",
+  "writablePaths": [
+    "src/checkout/invoice.ts"
+  ],
+  "checkScript": "./check-invoice.mjs"
+}
