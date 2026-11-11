@@ -1,4 +1,4 @@
-// 【新增文件】应用生命周期：参数→配置→副本→运行→报告→释放监听。
+// 应用生命周期：参数→配置→副本→运行→报告→释放监听。
 import type { ModelCall } from '@ai-harness/runtime';
 import { parseArgs, helpText } from './config/args';
 import { loadTask } from './config/task';
