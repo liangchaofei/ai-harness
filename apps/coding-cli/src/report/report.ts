@@ -1,4 +1,4 @@
-// 【新增文件】停止后读取同会话证据、展示并返回进程应采用的结果。
+// 运行停止后从同会话取证，再按实际变化与验收判断交付。
 import type { RunResult } from '@ai-harness/runtime';
 import type { TaskConfig } from '../types/task';
 import type { CliSession } from '../types/session';
@@ -11,6 +11,25 @@ export async function reportSession(
   session: CliSession,
   result: RunResult,
 ): Promise<number> {
+  // 【新增】从Runtime已保存的历史追踪请求与反馈，不把实时预览当完整记录。
+  let responseNumber = 0;
+  for (const message of result.messages) {
+    if (message.role === 'assistant') {
+      responseNumber += 1;
+      printBlock(`模型响应 ${responseNumber}`, {
+        stopReason: message.stopReason,
+        content: message.content,
+        toolCalls: message.toolCalls,
+      });
+    } else if (message.role === 'toolResult') {
+      printBlock(`工具反馈 · ${message.toolName}`, {
+        toolCallId: message.toolCallId,
+        isError: message.isError,
+        content: message.content,
+      });
+    }
+  }
+
   printBlock('运行停止', {
     status: result.status,
     modelCalls: result.modelCalls,
@@ -19,17 +38,13 @@ export async function reportSession(
     observerErrors: result.observerErrors,
   });
   if (result.status === 'failed') {
-    printBlock('异常分类', {
-      phase: result.phase,
-      code: result.failure.code,
-    });
+    printBlock('异常分类', { phase: result.phase, code: result.failure.code });
   }
-  if (result.status === 'answered') {
-    printBlock('模型总结', result.answer.content);
-  }
+  // 【修改】总结已包含在上面的完整模型消息中，不再单独重复打印。
   if (session.plan) {
     printBlock('任务计划（模型声明）', session.plan.read());
   }
+
   const review = await session.codeTask.inspect();
   for (const change of review.changes) {
     printBlock(`修改前 · ${change.path}`, change.before);
@@ -38,6 +53,7 @@ export async function reportSession(
   if (review.lastCheck) {
     printBlock('最近实际验收', review.lastCheck);
   }
+
   const accepted = acceptTask(result, review, task.writablePaths);
   printBlock('交付判断', {
     accepted,

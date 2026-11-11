@@ -178,7 +178,7 @@ export function total(items: CartItem[]): number {
 
 `createModelCall()` 只绑定配置，没有立即请求服务。真正网络调用发生在返回函数执行 `stream(context, {...options, signal})` 时。凭据不放进任务 JSON、消息或报告。`signal` 来自整次运行，继续沿用前面的取消与时限链。
 
-应用没有导入 `examples/shared/model.ts`。两个入口各自完成很薄的环境接线，协议编解码和 HTTP 等待仍复用 `@ai-harness/model`。服务模型名称、256 输出 token 上限与旧示例一致；这不是 CLI 对任意模型的兼容保证。
+应用没有导入 `examples/shared/model.ts`。两个入口各自完成很薄的环境接线，协议编解码和 HTTP 等待仍复用 `@ai-harness/model`。服务模型名称沿用原配置；CLI 将单次响应的输出上限设为 1024 token，为工具参数与最终说明留出空间。这个值是上限，不是每次固定用量，也不保证响应永不截断；这不是 CLI 对任意模型的兼容保证。
 
 新建 `apps/coding-cli/src/session/prepare.ts`。它接收已解析任务和计划开关，复制材料、固定验收命令，创建同一次代码会话与可选计划，返回 `CliSession` 交给运行和报告。
 
