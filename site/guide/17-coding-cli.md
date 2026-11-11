@@ -220,6 +220,8 @@ export function total(items: CartItem[]): number {
 
 `writablePaths.includes(change.path)` 来自任务配置，不再把 `src/checkout/invoice.ts` 写死。运行计划不参与判断，所以全部步骤 completed 也不能替代修改与验收。
 
+![acceptTask：先检查任务条件，再检查业务结果](/diagrams/17-accept-gates.svg)
+
 新建 `apps/coding-cli/src/report/report.ts`。它在运行停止后，展示允许的运行字段、实际差异与验收，调用接受函数，返回 CLI 使用的退出码。
 
 <<< @/snippets/17-coding-cli/apps/coding-cli/src/report/report.ts

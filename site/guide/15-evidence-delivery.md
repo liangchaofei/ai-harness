@@ -176,6 +176,8 @@ Pi 的 [edit 工具](https://github.com/badlogic/pi-mono/blob/8efd314fa3d3232ce1
 
 `inspect` 中的 `current` 接住停止后的重新采集；`compareWorkspace` 计算基线差异；最后比较 `lastCheck.revision === current.revision`。检查记录复制到返回对象，所以报告修改返回对象不会改掉会话内的原记录。文件本身仍未锁住，报告后发生变化也需要重新取证。
 
+![inspect：变化与验收来源分别核对](/diagrams/15-revision-match.svg)
+
 **完整替换 `packages/coding-tools/src/index.ts`**。保留所有原公开导出，增加 `createCodeTaskSession` 和四个审阅类型，内部 `WorkspaceSnapshot` 不公开：
 
 这份入口代码让应用能从 `@ai-harness/coding-tools` 导入会话工厂与审阅类型，而不跨包访问内部文件。它只公开已有实现和类型，不负责启动任务或创建记录。

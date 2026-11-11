@@ -121,6 +121,8 @@ for (const message of result.messages) {
 
 报告末尾仍重新 `inspect()`。打印的历史便于定位过程，当前代码对应的验收才用于交付；两者不能互相替代。CLI 最后一次模型请求没有对应反馈时，也不能因为日志里出现工具名就声称执行过。
 
+![reportSession：三个位置提供不同证据](/diagrams/18-report-evidence.svg)
+
 ### 为完整响应留出输出额度
 
 检查 `apps/coding-cli/src/model.ts` 中 DeepSeek 和 Anthropic 两个配置分支，将两处 `maxTokens: 256` 修改为 `maxTokens: 1024`；已经是 1024 时无需重复修改。其他配置保持原样。

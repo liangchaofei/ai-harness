@@ -11,26 +11,37 @@ interface ToolIdentity {
 }
 
 /** 执行器创建单项处理通知；runAgent 补上所属模型调用次数。仅包内使用。 */
-export type ToolEventData = ToolIdentity & (
-  | { type: 'tool_start' }
-  // 【修改】本项因运行信号停止，可能主动取消或到期；原因见 run_end。
-  | { type: 'tool_cancelled' }
-  | {
-      type: 'tool_end';
-      /** true 为已形成失败反馈；false 为成功结果，尚不代表整批已写入循环历史。 */
-      isError: boolean;
-    }
-  | {
-      type: 'tool_failed';
-      /** 无法形成普通反馈的停止错误；原始异常不进入事件。 */
-      code: RunFailureCode;
-    }
-);
+export type ToolEventData = ToolIdentity &
+  (
+    | { type: 'tool_start' }
+    // 只扩展本事件的含义，字段不变：运行信号可来自主动取消或到期，原因见 run_end.status。
+    | { type: 'tool_cancelled' }
+    | {
+        type: 'tool_end';
+        /** true 为已形成失败反馈；false 为成功结果，尚不代表整批已写入循环历史。 */
+        isError: boolean;
+      }
+    | {
+        type: 'tool_failed';
+        /** 无法形成普通反馈的停止错误；原始异常不进入事件。 */
+        code: RunFailureCode;
+      }
+  );
 
 /** Runtime 各边界提供的摘要；事件派发器另补运行身份与顺序号。仅包内使用。 */
 export type RunEventData =
   | { type: 'run_start' }
-  // 【修改】运行信号停止或迟到响应被丢弃；原因见 run_end，不产生 model_end。
+  // 【新增】这是本轮Context条数，不是HTTP消息数、token或额外调用。
+  | {
+      type: 'input_prepared';
+      /** 接下来拟发起的模型调用序号；观察期间取消时不一定实际发起。 */
+      modelCall: number;
+      /** 准备前完整运行记录中的消息条数。 */
+      historyMessageCount: number;
+      /** 准备后本轮Context.messages中的消息条数。 */
+      inputMessageCount: number;
+    }
+  // 只扩展本事件的含义，字段不变：模型等待因运行信号停止，原因见 run_end.status。
   | { type: 'model_cancelled'; modelCall: number }
   // 预览不作为消息写入，流失败后也不能当作最终回答。
   | {
@@ -68,22 +79,35 @@ export type RunEventData =
   | {
       type: 'run_end';
       /** 与随后返回的 RunResult.status 一致，answered 也不保证答案正确。 */
-      status: 'answered' | 'callLimit' | 'truncated' | 'emptyAnswer' | 'failed' | 'cancelled' | 'timedOut' | 'toolLimit';
+      status:
+        | 'answered'
+        | 'callLimit'
+        | 'truncated'
+        | 'emptyAnswer'
+        | 'failed'
+        | 'cancelled'
+        // 整次期限到达；不同于用户主动取消或单次 HTTP 失败。
+        | 'timedOut'
+        // 准备处理下一项工具请求时，累计处理额度不足。
+        | 'toolLimit';
       /** 本次实际发起的模型调用总数。 */
       modelCalls: number;
-      // 【新增】与最终结果中的工具处理尝试数一致。
+      // 让观察方无需等待最终结果，就能从停止事件取得累计处理数。
+      /** finish 从 outcome.toolCalls 复制；含参数被拒绝的尝试，不是请求数组或成功次数。 */
       toolCalls: number;
       /** 仅 status 为 failed 时有值；没有值不表示任务验收通过。 */
       failureCode?: RunFailureCode;
     };
 
 /** Runtime 创建，应用观察；只含原始值；文字片段仅作预览，不附参数、历史或原始异常。 */
-export type RunEvent = Readonly<RunEventData & {
-  /** 同一次 runAgent 的关联身份；不同运行不共用，由 Runtime 生成。 */
-  runId: string;
-  /** 本次运行从 1 开始递增；用于排序，不代表全局顺序或持久化游标。 */
-  sequence: number;
-}>;
+export type RunEvent = Readonly<
+  RunEventData & {
+    /** 同一次 runAgent 的关联身份；不同运行不共用，由 Runtime 生成。 */
+    runId: string;
+    /** 本次运行从 1 开始递增；用于排序，不代表全局顺序或持久化游标。 */
+    sequence: number;
+  }
+>;
 
 /** 应用提供的观察函数；Runtime 等待其结束，抛错或拒绝只累计观察失败。 */
 export type RunEventListener = (event: RunEvent) => void | Promise<void>;

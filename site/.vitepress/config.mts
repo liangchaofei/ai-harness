@@ -42,6 +42,9 @@ export default defineConfig({
         { text: '17 让 Coding CLI 使用同一个 Agent 内核', link: '/guide/17-coding-cli' },
         { text: '18 第三阶段实践验收：用现有 CLI 完成新任务', link: '/guide/18-stage-delivery' },
       ] },
+      { text: '第四阶段 · 长任务的信息管理', items: [
+        { text: '19 完整运行记录与本轮模型输入', link: '/guide/19-model-input' },
+      ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },
     docFooter: { prev: '上一篇', next: '下一篇' },

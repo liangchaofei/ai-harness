@@ -1,4 +1,4 @@
-// 【新增文件】CLI自有的显示函数，不接管运行状态。
+// CLI自有的显示函数，不接管运行状态。
 import { inspect } from 'node:util';
 import type { RunEvent } from '@ai-harness/runtime';
 
@@ -20,7 +20,12 @@ export function printBlock(title: string, value: unknown): void {
 /** main注册为观察器；事件中的序号用于关联同一次运行的进度。 */
 export function printProgress(event: RunEvent): void {
   const prefix = `[${event.runId.slice(0, 8)} #${event.sequence}]`;
-  if (event.type === 'model_start') {
+  if (event.type === 'input_prepared') {
+    // 【新增】只显示数量，不把完整输入或工具内容复制到事件中。
+    console.log(
+      `${prefix} 输入准备 ${event.modelCall}：历史 ${event.historyMessageCount} 条，本轮 ${event.inputMessageCount} 条`,
+    );
+  } else if (event.type === 'model_start') {
     console.log(`${prefix} 模型调用 ${event.modelCall}`);
   } else if (event.type === 'tool_start') {
     console.log(`${prefix} 开始 ${event.toolName} / ${event.toolCallId}`);
