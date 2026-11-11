@@ -1,6 +1,7 @@
 // 一次运行的配置与停止结果。
 import type { AssistantMessage, Message } from '@ai-harness/model';
 import type { ModelCall } from './model-call';
+import type { PrepareMessages } from './input';
 import type { RunFailure } from './failures';
 import type { ExecutableTool } from './tools';
 // 应用可以接收本次运行的动作通知。
@@ -8,7 +9,7 @@ import type { RunEventListener } from './events';
 
 /** 应用创建运行配置；任务与模型连接不写入通用循环。 */
 export interface RunAgentOptions {
-  /** 初始记录；Runtime 复制数组后追加，不向此数组 push。 */
+  /** 初始记录；Runtime复制当前消息结构后追加，不修改调用方的消息。 */
   messages: readonly Message[];
   /** 可省略的总体要求，每次模型调用沿用。 */
   systemPrompt?: string;
@@ -16,9 +17,12 @@ export interface RunAgentOptions {
   tools: readonly ExecutableTool[];
   /** 应用绑定服务配置和凭据的函数，Runtime 不选择提供商。 */
   callModel: ModelCall;
+  // 【新增】本轮输入可以变化，完整记录仍由Runtime追加。
+  /** 每次调用模型前等待；省略保留全量消息。失败在input阶段停止，不计入模型调用次数。 */
+  prepareMessages?: PrepareMessages;
   /** 整次运行最多发起的模型调用数，正安全整数；包括最终回答和失败的调用。 */
   maxModelCalls: number;
-  // 【新增】整次经过时长与工具处理次数分别限制，不是 token 或费用估算。
+  // 整次经过时长与工具处理次数分别限制，不是 token 或费用估算。
   /** 从有效 runAgent 启动到选定停止原因的期限，1..2147483647 毫秒；省略不设整次期限。 */
   timeoutMs?: number;
   /** 累计可进入处理的工具请求数，非负安全整数；含坏参数/未知名称，0 表示不处理工具。省略不另设限制。 */
@@ -37,22 +41,28 @@ interface RunRecord {
   messages: readonly Message[];
   /** 实际发起的模型调用次数，不是工具次数或消息条数。 */
   modelCalls: number;
-  // 【新增】由 Runtime 在进入单项处理前累计，不等于成功结果或实际 I/O 数量。
+  // 由 Runtime 在进入单项处理前累计，不等于成功结果或实际 I/O 数量。
   /** 已开始处理的工具请求数；包括 tool_start 通知后被取消、参数被拒绝的项。 */
   toolCalls: number;
 }
 
 /** 包内先构造的停止结果；answered 也不保证任务结论正确。 */
-export type RunOutcome = RunRecord & (
-  | { status: 'answered'; answer: AssistantMessage }
-  // 主动停止，保留已有完整记录；无 answer/failure，不表示可直接恢复。
-  // 【修改】到期与主动取消分别表达，均不携带答案或执行故障。
-  | { status: 'cancelled' | 'timedOut' }
-  // 【修改】callLimit 为模型上限，toolLimit 为下一项工具额度不足；其他停止含义保留。
-  | { status: 'callLimit' | 'toolLimit' | 'truncated' | 'emptyAnswer' }
-  // 未知异常不作为工具反馈；保留原异常仅供本地调试，不能直接打印整个结果。
-  | { status: 'failed'; phase: 'model' | 'tools'; failure: RunFailure; error: unknown }
-);
+export type RunOutcome = RunRecord &
+  (
+    | { status: 'answered'; answer: AssistantMessage }
+    // 主动停止，保留已有完整记录；无 answer/failure，不表示可直接恢复。
+    // 本分支在 cancelled 之外增加 timedOut；两者都保留记录，不携带答案或执行故障。
+    | { status: 'cancelled' | 'timedOut' }
+    // callLimit 为模型上限，toolLimit 为下一项工具额度不足；其他停止含义保留。
+    | { status: 'callLimit' | 'toolLimit' | 'truncated' | 'emptyAnswer' }
+    // 未知异常不作为工具反馈；保留原异常仅供本地调试，不能直接打印整个结果。
+    | {
+        status: 'failed';
+        phase: 'input' | 'model' | 'tools';
+        failure: RunFailure;
+        error: unknown;
+      }
+  );
 
 // 对外结果附运行身份与观察失败数，原有停止联合保留。
 /** Runtime 返回给应用；runId 可与实时事件对齐，观察失败不改变任务停止原因。 */

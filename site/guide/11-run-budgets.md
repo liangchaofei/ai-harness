@@ -252,6 +252,8 @@ if (error instanceof ToolBatchLimit) {
 
 工具额度不足时，执行器交回此前结果；这里的 `push` 才把它们保存。随后直接返回停止结果，不把缺少后续反馈的批次再发给模型。`ToolBatchCancelled` 路径仍先保存已完成项，再根据控制对象区分主动取消与到期。
 
+![工具额度：用满与申请失败是两件事](/diagrams/11-tool-budget-boundary.svg)
+
 ### 为什么要有两处清理
 
 `finish` 选定结果后先 `control.dispose()`，再通知 `run_end`。终止展示变慢，不会把一个已经生成的答案事后改成超时。最外层 `try/finally` 则兜住所有异常出口，即使包内意外抛错，也移除外部监听和计时器。清理允许重复调用，两个位置不会创建两份控制状态。

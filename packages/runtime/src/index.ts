@@ -16,6 +16,15 @@ export type { ToolFailureCode } from './types/tool-registry';
 // 应用只通过包入口使用事件契约。
 export type { RunEvent, RunEventListener } from './types/events';
 
-// 【新增】可选任务进度，原循环与事件契约保持不变。
+// 可选任务进度，原循环与事件契约保持不变。
 export { createPlanSession } from './planning/session';
-export type { PlanStepStatus, PlanStep, PlanUpdate, PlanSnapshot, PlanSession } from './types/plan';
+export type {
+  PlanStepStatus,
+  PlanStep,
+  PlanUpdate,
+  PlanSnapshot,
+  PlanSession,
+} from './types/plan';
+
+// 【新增】只公开应用回调类型，复制与组装函数留在包内。
+export type { PrepareMessages } from './types/input';

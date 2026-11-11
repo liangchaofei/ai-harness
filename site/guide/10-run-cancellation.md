@@ -264,6 +264,8 @@ if (error instanceof ToolBatchCancelled) {
 
 本篇在识别取消的动作边界优先返回 `cancelled`。已选定普通故障、开始发出 `model_failed/tool_failed` 通知后，不再把故障改成取消；最终 `run_end` 前也已经选定停止原因。即使 `run_end` 的观察函数调用 `abort()`，已经完成的 `answered` 不会再改写。观察函数仍按顺序等待；永不返回的观察函数也会阻塞，信号不能替它结束。
 
+![取消时，哪些东西已经保存？](/diagrams/10-cancel-writeback.svg)
+
 ## 第五步：具体读取与模型连接继续传信号
 
 Runtime 传出了信号，真正的等待也要收到它。

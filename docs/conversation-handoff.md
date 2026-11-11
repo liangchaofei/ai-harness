@@ -66,3 +66,5 @@ VitePress1.6.4，base=/ai-harness/，cleanUrls=true，http://127.0.0.1:4174/ai-h
 若桌面浏览工具不可用，可用/tmp/ai12-browser指针中的playwright-core，Chrome路径：/Users/curry/Library/Caches/ms-playwright/chromium-1228/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing。临时文件可能已清理，先检查不要硬依赖。
 
 2026-11-11第18篇重写：正文改为“第三阶段实践验收”，以现有CLI接入新材料、审阅请求反馈与当前验收、保存结果为主；固定响应演示移至可选附录，不要求跟写，不重复175份继承文件。该次重写未改候选行为与实际学习源码；后续用户已授权预算修订与真实诊断，学习者独立迁移与掌握仍待取证，不以固定演示或本次文案改写提升状态。
+
+2026-11-11：19已按用户要求推进：site/guide/19-model-input.md与site/snippets/19-model-input；docs/chapter-19-{plan,pi-audit,verification,learning-card}.md。实际学习源码未覆盖，当前仍18；候选新增prepareMessages、输入副本组装、准备失败/条数事件，CLI默认全量。后续先回答用户问题，不自动跳20。不要再把前文“不自动19”误读为当前禁令，用户已明确要求下一篇。
