@@ -1,0 +1,79 @@
+// 应用生命周期：参数→配置→副本→运行→报告→释放监听。
+import type { ModelCall } from '@ai-harness/runtime';
+import { parseArgs, helpText } from './config/args';
+import { loadTask } from './config/task';
+import { createModelCall } from './model';
+import { prepareSession } from './session/prepare';
+import { runSession } from './session/run';
+import { reportSession } from './report/report';
+import { printProgress, printBlock } from './report/terminal';
+import type { CliSession } from './types/session';
+
+/** cli接住退出码；固定观察入口可注入模型函数，真实入口不提供此参数。 */
+export async function runCli(
+  args: readonly string[],
+  createCallModel: () => ModelCall = createModelCall,
+): Promise<number> {
+  const controller = new AbortController();
+  const onInterrupt = () => {
+    if (!controller.signal.aborted) {
+      console.log('请求取消，等待当前协作操作退出。');
+      controller.abort();
+    }
+  };
+  let session: CliSession | undefined;
+  let phase = '参数';
+  process.on('SIGINT', onInterrupt);
+
+  try {
+    const options = parseArgs(args);
+    if (options.help) {
+      console.log(helpText);
+      return 0;
+    }
+
+    phase = '任务配置';
+    const task = await loadTask(options.taskFile, controller.signal);
+
+    phase = '模型配置';
+    const callModel = createCallModel();
+
+    phase = '副本准备';
+    session = await prepareSession(task, options.planning, controller.signal);
+    printBlock('工作副本', session.root);
+
+    phase = '运行与报告';
+    const result = await runSession(
+      task,
+      session,
+      callModel,
+      controller.signal,
+      (event) => {
+        printProgress(event);
+        if (
+          event.type === 'tool_end' &&
+          event.toolName === 'update_plan' &&
+          !event.isError &&
+          session?.plan
+        ) {
+          printBlock('任务计划（模型声明）', session.plan.read());
+        }
+      },
+    );
+
+    return await reportSession(task, session, result);
+  } catch {
+    if (controller.signal.aborted) {
+      return 130;
+    }
+
+    // 原异常留在调试器，不打印凭据、响应正文或整个请求。
+    console.error(`${phase}失败；请检查配置或在对应函数断点查看原异常。`);
+    return 2;
+  } finally {
+    process.off('SIGINT', onInterrupt);
+    if (session) {
+      console.log('工作副本保留在：', session.root);
+    }
+  }
+}

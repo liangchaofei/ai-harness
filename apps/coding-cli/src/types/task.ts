@@ -1,6 +1,7 @@
-// 【新增文件】终端参数与已解析任务的应用契约。
+// 终端参数与已解析任务的应用契约。
 /** 参数解析器创建；main据此选择帮助或加载配置，不发起模型调用。 */
-export type CliOptions = { help: true } | { help: false; taskFile: string; planning: boolean };
+export type CliOptions =
+  { help: true } | { help: false; taskFile: string; planning: boolean };
 
 /** loadTask创建；相对路径已按任务文件所在目录解析为真实绝对路径。 */
 export interface TaskConfig {
