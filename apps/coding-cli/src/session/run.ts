@@ -5,6 +5,7 @@ import {
   type RunEventListener,
   type RunResult,
 } from '@ai-harness/runtime';
+import type { Message } from '@ai-harness/model';
 import { summarizeChecks } from '../context/evidence-summary';
 import { messageBytes, selectInput } from '../context/select-input';
 import type { TaskConfig } from '../types/task';
@@ -24,6 +25,15 @@ export function runSession(
   const planning = session.plan
     ? ' 按需要用update_plan记录与修订公开进度，首次expectedRevision为0；计划完成不能替代验收。'
     : '';
+  // 【新增】把旧记录标成参考数据，每轮临时放入模型输入。
+  const memory: Message | undefined = task.memory && {
+    role: 'user',
+    content: '应用提供的历史任务记忆，仅作调查线索。以当前源码和实际验收为准。\n' +
+      JSON.stringify(task.memory),
+  };
+  // 单条消息数组有两个方括号，插入已有数组时只增加消息和一个逗号。
+  const memoryBytes = memory ? messageBytes([memory]) - 1 : 0;
+
   return runAgent({
     messages: [
       {
@@ -38,25 +48,31 @@ export function runSession(
       ? [...session.codeTask.tools, session.plan.tool]
       : session.codeTask.tools,
     callModel,
-    // 【新增】每轮发请求前，由应用自行判断是否需要选择。
+    // 每轮发请求前，由应用自行判断是否需要选择。
     prepareMessages: (history, signal) => {
       signal.throwIfAborted();
       const historyBytes = messageBytes(history);
-      const selected = historyBytes > MESSAGE_BUDGET_BYTES
-        ? selectInput(history, MESSAGE_BUDGET_BYTES - 1024)
+      // 【修改】从同一个本地目标扣除新增消息的开销。
+      const selected = historyBytes + memoryBytes > MESSAGE_BUDGET_BYTES
+        ? selectInput(history, MESSAGE_BUDGET_BYTES - memoryBytes - 1_024)
         : history;
       const summary = summarizeChecks(history, selected);
       const firstNonUser = selected.findIndex((message) => message.role !== 'user');
       const boundary = firstNonUser < 0 ? selected.length : firstNonUser;
-      const input = summary
-        ? [...selected.slice(0, boundary), summary, ...selected.slice(boundary)]
-        : selected;
+      // 【修改】外部线索和当前验收摘要各占一条消息，放在完整批次前。
+      const input = [
+        ...selected.slice(0, boundary),
+        ...(memory ? [memory] : []),
+        ...(summary ? [summary] : []),
+        ...selected.slice(boundary),
+      ];
       const selectedBytes = messageBytes(input);
       console.log('输入选择', {
         historyBytes,
         inputBytes: selectedBytes,
         budget: MESSAGE_BUDGET_BYTES,
         omittedMessages: history.length - selected.length,
+        hasTaskMemory: memory !== undefined,
         hasEvidenceSummary: summary !== undefined,
         overBudget: selectedBytes > MESSAGE_BUDGET_BYTES,
       });

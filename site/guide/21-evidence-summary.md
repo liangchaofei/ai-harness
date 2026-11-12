@@ -8,21 +8,26 @@
 
 ### 实施前，先走完一次具体过程
 
-1. **第一次验收失败。** 路径修复只处理了后缀和尾斜杠，根路径 `/` 却变成空串。Runtime 保存 `check_partial` 的真实反馈，其中的 `stdout` 记录了失败用例。
-2. **模型修正，再次验收。** 第二次通过，Runtime 把 `check_complete` 的反馈追加到完整记录。旧失败仍然是事实，但已不是最近的结果。
-3. **第四轮调用前，CLI 发现第一次验收被省略。** 完整历史超过本地字节目标，CLI 给摘要预留 1,024 字节，再用第 20 篇的规则选择完整批次。它从未被选中的 `check_partial` 提取失败用例 `/`，记下历史下标 6 和工具请求 ID，并附上最近一次验收的来源和结果。
-4. **模型收到原任务、摘要和近期批次。** 第四轮可以借摘要指出第一次失败的是根路径用例。Runtime 继续保留原始反馈，CLI 仍按当前文件和与之匹配的实际验收判断交付。
+1. **第一次验收发现根路径出错。** 模型改了路径处理函数，验收发现 `/` 被变成了空字符串。Runtime 保存失败反馈。模型修正后再次验收，通过的反馈也存入完整历史。
+2. **下一轮输入只留下最近的通过反馈。** CLI 在发送前缩减输入，第一次失败的原文被省略。此时如果问「第一次哪个用例失败」，仅凭最近一批消息找不到答案。
+3. **CLI 从完整历史取回一小段证据。** 它摘出失败用例 `/` 和能查回原文的位置，把摘要放进本轮输入。完整历史仍由 Runtime 保存，CLI 仍用当前文件对应的验收结果判断交付。
 
-### 职责与取舍
+这里在 CLI 输入准备阶段做固定字段提取。原始反馈留在历史里，摘要只带模型回答眼前问题所需的信息。首次阅读先追 `/` 怎么回到输入，等这条路径走通，再看通过后又改文件为什么要重验。
 
-- **在 CLI 的输入准备阶段提取。** CLI 从 Runtime 提供的完整历史中读取原始反馈，每轮按需计算摘要。摘要只随本轮输入发送，完整历史里的原文仍可供报告和调试回查。
-- **只提取验收所需的字段。** 用固定规则记录最近一条被省略的验收、最近一次验收和最近一次修改，不额外调用模型。失败摘要只保留一个用例样本。需要核对完整诊断时，可用历史下标和请求 ID 找回原反馈。
-- **通过结果只对应当时的验收。** 如果最新验收之后又出现写入工具反馈，摘要保留当时的通过结果，同时提示重验。最新验收无法确认通过时也提示重验。
+### 先看一条输出
+
+在装好项目依赖的仓库根目录，直接运行教程提供的观察脚本。它用两条人工反馈演示裁剪后的情形，无需先写本章代码，也无需模型密钥。
+
+```bash
+node --import tsx site/snippets/21-evidence-summary/examples/evidence-summary/inspect-summary.ts
+```
+
+在输出里先找 `omitted.failedInput`。它是 `"/"`，来自被省略的那次验收。再看 `latest.outcome`，它是 `"passed-at-check"`，来自最近一次验收。两个结果可以同时成立。后面就沿这两条记录读代码。
 
 ### 验收标准
 
-- 用同一次路径修复流程做两种对照。近期批次相同，只有含摘要的固定探针能在第四轮读到用例 `/`、下标 6 和 `check_partial`。两次文件验收都已通过，探针结果用于验证早期证据是否送达。
-- 在独立观察入口模拟通过后再次写入，确认 `needsRecheck` 变为 `true`。再模拟不可解码的验收反馈，确认最新结果为 `unknown`，并提示重验。
+- 同样的近期消息，有摘要时，第四轮能指出第一次失败的是 `/` 并回查来源。移除摘要后，第四轮的固定检查报告缺少依据。
+- 最近一次验收通过后，如果又出现写入反馈，摘要应提示重验。第五步单独验证这个边界。
 
 ## 动手前
 
@@ -33,9 +38,22 @@ git status --short
 git switch -c agent/chapter-21-evidence-summary
 ```
 
-## 第一步：拆开同一条失败反馈
+## 第一步：从失败反馈里取出 `/`
 
-先看本章实际运行里的 `check_partial`。下面是从报告节选出的字段，省略其他用例；`stdout` 在外层仍然是字符串：
+先沿着一条反馈找出失败用例。工具把进程结果放进 `message.content`，验收脚本又把用例报告打印进进程结果的 `stdout`。所以代码需要打开两层，才能从用例里取到 `/`。
+
+```ts
+const result = objectFromJson(message.content);
+const report = typeof result.stdout === 'string' ? objectFromJson(result.stdout) : {};
+```
+
+第一行得到进程结果，能看到 `status: "failed"`。第二行得到验收报告，能看到 `cases`。在数组里找第一条 `passed: false` 且有字符串输入的用例，取出它的 `input`，就得到 `failedInput: "/"`。这两行已包含在下一步的完整实现里。
+
+![同一条反馈，两次解码](/diagrams/21-decode.svg)
+
+::: details 展开查看工具返回的原始格式
+
+以下节选自运行报告中的 `check_partial`，省略其他用例。
 
 ```json
 {
@@ -47,27 +65,46 @@ git switch -c agent/chapter-21-evidence-summary
 }
 ```
 
-分两次解码：第一次解析 `message.content`，取得进程结果和 `stdout`；第二次解析 `stdout`，才能拿到 `cases`。这次 `isError: false` 是工具正常返回了结果，`status: failed` 和 `exitCode: 1` 表示验收没通过，`cases[0].input` 则告诉我们具体失败的是根路径 `/`。这三层不能互相替代。
+`isError: false` 表示工具正常返回了结果。`status: failed` 和 `exitCode: 1` 表示验收没通过。具体差异在用例报告里，预期为 `/`，实际是空串。
 
-把这条反馈转成摘要时，保留 `index: 6`、`id: "check_partial"`、`outcome: "failed-at-check"`、`failedInput: "/"`。原始反馈仍能解释失败原因：预期为 `/`，实际是空串。摘要只带用例输入，不假装保留了全部诊断细节。
-
-![同一条反馈，两次解码](/diagrams/21-decode.svg)
+:::
 
 ## 第二步：实现摘要和来源定位
 
-新建 `apps/coding-cli/src/context/evidence-summary.ts`。输入是同一次准备得到的完整历史和被选中的消息；输出是一条可选的输入消息。
+先用开头那个两条消息的例子。完整历史 `history` 里有「失败、通过」，本轮选中的 `selected` 里只有「通过」。这个函数要交回一条摘要，让 CLI 可以把旧失败带进本轮。下面两处摘录都已包含在完整实现中。
+
+**怎样从一条反馈得到一条可回查的记录？** 上一步已经拿到 `failedInput`。这行再保存消息在完整历史里的位置和请求 ID。
+
+```ts
+checks.push({ index, id: message.toolCallId, outcome, failedInput });
+```
+
+小例子里，`check_partial` 在 `history[0]`，所以第一条记录带着 `index: 0` 和 `failedInput: "/"`。CLI 的完整运行还有任务消息、工具请求和其他反馈，同一条失败记录在那里是下标 6。
+
+**怎样知道哪次验收被省略？** 用每条记录的 `index` 找回原消息，再看原消息是否还在 `selected` 里。
+
+```ts
+const kept = new Set(selected);
+const omitted = checks.filter((check) => !kept.has(history[check.index]!)).at(-1);
+const latest = checks.at(-1);
+if (!omitted || !latest) return undefined;
+```
+
+`history[0]` 对应的失败反馈没有留在 `selected`，于是它成为 `omitted`。最后一次验收仍从完整的 `checks` 取，所以 `latest` 是通过的那条。这里能直接用集合查找，是因为输入选择保留了同一份历史中的消息对象。
+
+先在心里试一个变化。如果 `selected` 也保留第一次失败，函数还会返回摘要吗？
+
+::: details 对照结果
+
+两条验收都保留时，`omitted` 取不到值，函数返回 `undefined`。
+
+:::
+
+现在新建 `apps/coding-cli/src/context/evidence-summary.ts`。先按上面两处定位代码，返回消息里关于重验的字段可以留到第五步再读。
 
 <<< @/snippets/21-evidence-summary/apps/coding-cli/src/context/evidence-summary.ts
 
-先按历史顺序扫描。只有 `run_check` 的实际工具反馈能形成验收条目；模型说“测试通过”不算。外层反馈的进程状态和内层 `stdout` 的业务结果都符合通过条件，才记为 `passed-at-check`。缺少可识别结果记为 `unknown`，不猜测。失败时只提取一个有界用例样本，不带入整段脚本输出。
-
-![摘要提取和过期判断](/diagrams/21-evidence-source.svg)
-
-`index` 是零基下标：`history[index]` 应是同一个 `toolCallId` 的工具反馈。它只在本次运行的完整历史里有意义，不能当成跨会话 ID。选择函数返回同一份历史副本里的消息对象，因此可用集合成员判断某条反馈有没有留下。不要拿另一次复制的对象来比较引用。
-
-摘要只保留最近一条被省略的验收和最近一次验收。原任务继续通过保留的用户消息提供；若最近验收未通过，或它后面已有写入工具反馈，就提示重验。这里对写入采用保守判断，即使一次替换失败也可能要求重验。没有省略验收时就不加摘要。这是针对验收的结构化提取，不是对所有历史进行通用压缩。
-
-### 从原记录追到摘要
+::: details 接入 CLI 后，在完整历史里核对位置
 
 在这次固定运行的末轮准备阶段，完整历史有 10 条：
 
@@ -78,17 +115,9 @@ git switch -c agent/chapter-21-evidence-summary
 | 4 到 6 | 第一次修改与验收请求，以及两条反馈 | 省略；从下标 6 提取失败摘要 |
 | 7 到 9 | 修正与重验请求，以及两条反馈 | 整组保留 |
 
-这里的 6 是数组下标，即第七条消息。断在 `summarizeChecks` 里，沿 `history[6].toolCallId` 找到 `check_partial`，再从 `stdout` 找到 `/`。不能从摘要中的 ID 反推出原文内容；要核对时必须回到这份历史。
+这里的 6 是数组下标，即第七条消息。沿 `history[6].toolCallId` 找到 `check_partial`，再从 `stdout` 找到 `/`。下标的含义限于这次运行。
 
-代码中，`checks` 按时间顺序收集验收条目，`kept` 标记仍出现在选中数组里的对象，`omitted` 找最近一条没被保留的验收，`latest` 则来自完整历史中的最后一次验收。后者不受裁剪影响，所以不会误把前一次失败当作最近结果。
-
-### 任务、进展和待办分别从哪里来
-
-- **任务目标**来自开头的用户消息，直接保留，不另写一份可能失真的目标。
-- **进展**来自最近一次 `replace_text` 反馈，保留其下标和请求 ID。`tool-returned` 仅表示工具正常返回，不能单凭它宣布修复完成。
-- **待办**由最新验收和写入顺序推导。写入反馈晚于最新验收，或者最新验收无法确认通过时，`pending` 为“重新运行验收”。否则为 `null`，只表示这条规则没有生成重验待办。
-
-这版只覆盖修改与验收，不总结所有调查发现、设计决定或业务待办。
+:::
 
 ### 先单独运行摘要，不等 CLI 接完
 
@@ -112,7 +141,25 @@ node --import tsx examples/evidence-summary/inspect-summary.ts
 
 这里的下标是 0 和 1，因为样本只构造了两条反馈。真实 CLI 的下标 6 和 9 还计入任务、请求和其他反馈。不要把示例下标写进摘要函数。
 
+**可以先停在这里。** 能用 `history[0]` 指出 `omitted.failedInput` 的来源，再说明 `latest` 为什么仍然是通过，就已经走完了本章的核心提取逻辑。接下来再把这条摘要交给 CLI。
+
 ## 第三步：只把摘要加到本轮输入
+
+第二步已经得到一条写着「第一次失败的是 `/`」的摘要。现在只追它怎么交给模型。先看 `prepareMessages` 里的这两处。
+
+```ts
+const summary = summarizeChecks(history, selected);
+```
+
+这行同时传入两份消息。用 `history` 回查旧失败，用 `selected` 判断旧失败的原文是否还会发送。拿到摘要后，把它插在原任务和近期批次之间。
+
+```ts
+const input = summary
+  ? [...selected.slice(0, boundary), summary, ...selected.slice(boundary)]
+  : selected;
+```
+
+`boundary` 是开头连续用户消息之后的位置。以路径修复为例，原任务在前，接着是带 `/` 的摘要，最后才是修正与验收通过的完整批次。回调最后 `return input`，Runtime 用这个数组发本轮请求。下面的完整文件已包含这两段。
 
 完整替换 `apps/coding-cli/src/session/run.ts`。保留原有 `runSession` 签名、工具、系统提示、运行预算和报告路径，增加摘要调用，并在超过字节目标时为摘要预留 1,024 字节。
 
@@ -152,6 +199,15 @@ node --import tsx examples/evidence-summary/main.ts summary
 ## 第五步：验证旧通过不会变成当前通过
 
 先看末轮摘要的三个来源：旧验收 `check_partial` 在下标 6，最近写入 `edit_complete` 在下标 8，最近验收 `check_complete` 在下标 9。此时写入早于通过验收，所以没有生成重验待办。
+
+```ts
+const needsRecheck = (lastEdit?.index ?? -1) > latest.index ||
+  latest.outcome !== 'passed-at-check';
+```
+
+把最近写入想象成发生在下标 9 之后。第一项条件就会成立，`pending` 随之变成“重新运行验收”。这里按写入工具反馈的位置保守判断，即使一次替换失败也可能提示重验。第二项条件负责处理最近一次验收未通过、工具出错或无法解码的情形。原任务仍从用户消息取得，`latestEdit` 只记录写入反馈的位置和结果。
+
+![摘要提取和过期判断](/diagrams/21-evidence-source.svg)
 
 用刚才的独立入口复现，不必改文件或真的再执行一次工具：
 

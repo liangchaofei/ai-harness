@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 315" role="img" aria-labelledby="title desc">
+  <title id="title">两次循环中 matches 的变化</title>
+  <desc id="desc">以 route-repair 为查询主题。第一条笔记匹配，加入路径线索。第二条发票笔记不匹配，matches 保持不变。最后返回 matches[0]。</desc>
+  <rect width="640" height="315" rx="16" fill="#f3f7fb"/>
+  <g font-family="system-ui,sans-serif" fill="#183149">
+    <text x="24" y="37" font-size="22" font-weight="700">topic = 'route-repair'</text>
+    <text x="24" y="63" font-size="16">进入循环前：matches = []</text>
+    <rect x="24" y="82" width="592" height="76" rx="10" fill="#e0f1e9"/>
+    <text x="42" y="112" font-size="19" font-weight="700">第 1 条 · route-repair</text>
+    <text x="42" y="138" font-size="16">主题相等 → 执行 push → matches 里有 1 条路径线索</text>
+    <rect x="24" y="171" width="592" height="76" rx="10" fill="#e0edfc"/>
+    <text x="42" y="201" font-size="19" font-weight="700">第 2 条 · invoice-review</text>
+    <text x="42" y="227" font-size="16">主题不同 → 跳过 push → matches 里还是那 1 条路径线索</text>
+    <text x="24" y="282" font-size="17" font-weight="700">return matches[0] → 线索和来源 task-memory.json</text>
+  </g>
+</svg>
