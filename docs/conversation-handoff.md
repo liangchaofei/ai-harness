@@ -70,3 +70,5 @@ VitePress1.6.4，base=/ai-harness/，cleanUrls=true，http://127.0.0.1:4174/ai-h
 2026-11-11：19已按用户要求推进：site/guide/19-model-input.md与site/snippets/19-model-input；docs/chapter-19-{plan,pi-audit,verification,learning-card}.md。实际学习源码未覆盖，当前仍18；候选新增prepareMessages、输入副本组装、准备失败/条数事件，CLI默认全量。后续先回答用户问题，不自动跳20。不要再把前文“不自动19”误读为当前禁令，用户已明确要求下一篇。
 
 2026-11-11：20 已提供教程和候选；用户授权后已同步修正学习分支的输入策略。应用内部以 4096 字节为教学目标自动判断，不暴露字节参数；21 继续带来源的摘要前先核对源码与实验。
+
+2026-11-11：21 已交付正文和候选，未修改学习源码。22 再做按需检索任务记忆。
