@@ -5,6 +5,7 @@ import {
   type RunEventListener,
   type RunResult,
 } from '@ai-harness/runtime';
+import { summarizeChecks } from '../context/evidence-summary';
 import { messageBytes, selectInput } from '../context/select-input';
 import type { TaskConfig } from '../types/task';
 import type { CliSession } from '../types/session';
@@ -42,17 +43,24 @@ export function runSession(
       signal.throwIfAborted();
       const historyBytes = messageBytes(history);
       const selected = historyBytes > MESSAGE_BUDGET_BYTES
-        ? selectInput(history, MESSAGE_BUDGET_BYTES)
+        ? selectInput(history, MESSAGE_BUDGET_BYTES - 1024)
         : history;
-      const selectedBytes = messageBytes(selected);
+      const summary = summarizeChecks(history, selected);
+      const firstNonUser = selected.findIndex((message) => message.role !== 'user');
+      const boundary = firstNonUser < 0 ? selected.length : firstNonUser;
+      const input = summary
+        ? [...selected.slice(0, boundary), summary, ...selected.slice(boundary)]
+        : selected;
+      const selectedBytes = messageBytes(input);
       console.log('输入选择', {
         historyBytes,
         inputBytes: selectedBytes,
         budget: MESSAGE_BUDGET_BYTES,
         omittedMessages: history.length - selected.length,
+        hasEvidenceSummary: summary !== undefined,
         overBudget: selectedBytes > MESSAGE_BUDGET_BYTES,
       });
-      return selected;
+      return input;
     },
     signal,
     onEvent,

@@ -59,3 +59,5 @@ model定义模型输入输出契约，适配器认识服务协议；Runtime创�
 2026-11-11：19新增链路：runLoop持有完整messages→prepareModelInput复制→应用可选prepareMessages→返回消息再复制→callModel(context)。响应与真实工具结果仍只由原循环追加。初始消息也按当前结构复制。input_prepared只含条数与拟调用序号，CLI显示不接管状态；input失败模型次数不增。未实现裁剪/摘要/持久化。
 
 2026-11-11：20：CLI 参数 → runSession → prepareMessages → selectInput；只选择发送消息，Runtime 完整历史与验收继续独立。
+
+2026-11-11：21 应用层从历史中提取验收摘要，写入本轮输入；验收与原历史继续独立。

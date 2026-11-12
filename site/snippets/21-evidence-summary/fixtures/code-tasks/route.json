@@ -1,0 +1,8 @@
+{
+  "source": "../route-repair",
+  "prompt": "从src/main.ts调查normalizePath，按README的页面路径规则修复当前实现。保持函数签名，只修改获准的当前文件，运行验收，并根据实际输出修正或说明限制。最后说明修改与验收结果。",
+  "writablePaths": [
+    "src/routing/normalize.ts"
+  ],
+  "checkScript": "./check-route.mjs"
+}

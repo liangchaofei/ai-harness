@@ -45,6 +45,7 @@ export default defineConfig({
       { text: '第四阶段 · 长任务的信息管理', items: [
         { text: '19 完整运行记录与本轮模型输入', link: '/guide/19-model-input' },
         { text: '20 在有限输入中保留任务依据', link: '/guide/20-input-budget' },
+        { text: '21 把被省略的验收证据带回本轮输入', link: '/guide/21-evidence-summary' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },
