@@ -128,6 +128,22 @@ const memory = await loadTaskMemory(value.memory, base, signal);
 
 `value.memory` 是从 `route-memory.json` 读到的 `{ file: './task-memory.json', topic: 'route-repair' }`。`base` 指向该配置所在的目录。等待结束后，局部变量 `memory` 接住第一步观察过的对象，包含 `topic`、`source` 和 `hint`。返回的任务对象只在命中时带上这条记录。原来的 `route.json` 没有 `memory`，加载器立即返回 `undefined`，也无需读取笔记文件。
 
+### 命中的线索怎样离开加载器
+
+在 `apps/coding-cli/src/config/task.ts` 中看下面的摘录。它已包含在本步的完整实现里。
+
+```ts
+  return {
+    source: sourcePath,
+    prompt: prompt.trim(),
+    writablePaths: [...writablePaths],
+    checkScript: scriptPath,
+    ...(memory ? { memory } : {}),
+  };
+```
+
+在 `loadTask` 中，`memory` 是 `loadTaskMemory` 返回的记录。命中 `route-repair` 时，展开 `{ memory }` 会在返回对象上增加一个字段。这里的 `memory.hint` 已经是笔记正文。主题没命中时，展开的是空对象，返回的任务仍含原有的四个字段。随后 `runCli` 把这个任务交给 `runSession`，第三步才会把线索转成模型消息。
+
 ::: details 完整文件 config/task.ts
 <<< @/snippets/22-task-memory/apps/coding-cli/src/config/task.ts
 :::

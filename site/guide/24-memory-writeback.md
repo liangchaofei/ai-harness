@@ -166,6 +166,26 @@ const sample = report.cases.find((item: unknown) =>
 
 ![从验收结果挑出根路径用例](/diagrams/24-memory-extract.svg)
 
+### 为什么第二次保存不会再写一条
+
+在 `apps/coding-cli/src/context/save-memory.ts` 中看下面的摘录。它已包含在本步的完整实现里。
+
+```ts
+  const previous = existing[0];
+  if (previous?.enabled === false) {
+    return 'disabled';
+  }
+
+  const evidence = { checkScript: basename(checkScript), revision: check.revision };
+  if (previous?.hint === hint && object(previous.evidence) &&
+      previous.evidence.checkScript === evidence.checkScript &&
+      previous.evidence.revision === evidence.revision) {
+    return 'unchanged';
+  }
+```
+
+在 `saveAcceptedMemory` 中，首次运行没有旧条目，`previous` 是 undefined，两处提前返回都跳过。第二次运行找到同主题条目后，先检查它是否被停用。仍启用时，再比较提示、验收脚本名和内容标识。三项都相同就返回 `unchanged`，执行在打开暂存文件之前结束。如果示例换成 `sample-v2`，标识变化，代码继续走到下面的替换逻辑。
+
 在同一文件的 `saveAcceptedMemory` 里，读完停用和重复判断后，再看下面这段。它已包含在完整实现里。
 
 ```ts

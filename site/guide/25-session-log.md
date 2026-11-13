@@ -203,6 +203,25 @@ git switch -c agent/chapter-25-session-log
 
 这里的 `await` 决定了先后顺序。首段写失败时，CLI 走原有异常分支并显示「会话记录失败」，追问尚未开始。未指定路径时，三个写入点都跳过。两个段的 `runId` 各自保存，共用同一个日志首行。
 
+### 首段保存后，追问从哪条消息开始
+
+在 `apps/coding-cli/src/main.ts` 中看下面的摘录。它已包含在本步的完整实现里。
+
+```ts
+      const nextInput: RunInputOptions = {
+        messages: [...first.messages, { role: 'user', content: options.followUp }],
+        fullHistory,
+      };
+      result = await runSession(task, session, callModel, controller.signal, onEvent, nextInput);
+      if (logPath) {
+        phase = '会话记录';
+        await appendRun(logPath, result, first.messages.length);
+        phase = '运行与报告';
+      }
+```
+
+在 `runCli` 的追问分支里，`first.messages` 有 11 条。先展开它，再追加追问，`nextInput.messages` 变成 12 条。第二次 `runSession` 完成回答后，`result.messages` 变成 13 条。调用 `appendRun` 时仍传入首段长度 11，因此日志最后一行仅包含下标 11、12。若首段 `appendRun` 抛错，执行会在进入追问分支前跳到 `catch`，第二次 `runSession` 尚未开始。
+
 ![同一个日志先保存首段，再追加追问的新增消息](/diagrams/25-session-append.svg)
 
 ::: details 完整文件 main.ts

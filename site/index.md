@@ -63,3 +63,5 @@ features:
 [第 24 篇：把已验收的经验留给下一个任务](/guide/24-memory-writeback)从当前验收提取线索，下次任务从磁盘取回。
 
 [第 25 篇：让 Coding Agent 退出后仍能查到会话](/guide/25-session-log)逐段保存会话记录。
+
+[第 26 篇：退出后继续追问上一场任务](/guide/26-resume-conversation)从会话日志重建输入。
