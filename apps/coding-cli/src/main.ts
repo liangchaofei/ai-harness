@@ -4,7 +4,7 @@ import type { ModelCall, RunEventListener } from '@ai-harness/runtime';
 import { parseArgs, helpText } from './config/args';
 import { loadTask } from './config/task';
 import { createModelCall } from './model';
-import { resumePendingCheck, savePendingCheck } from './session/checkpoint';
+import { inspectPendingCheck, resumePendingCheck, savePendingCheck } from './session/checkpoint';
 import { prepareSession } from './session/prepare';
 import { appendRun, createSessionLog } from './session/session-log';
 import { resumeConversation } from './session/resume-conversation';
@@ -56,6 +56,13 @@ export async function runCli(
 
     phase = '任务配置';
     const task = await loadTask(options.taskFile, controller.signal);
+
+    if (options.inspectCheck) {
+      phase = '检查点诊断';
+      const report = await inspectPendingCheck(options.inspectCheck, task, controller.signal);
+      printBlock('检查点诊断', report);
+      return 0;
+    }
 
     if (options.resumeCheck) {
       phase = '检查点恢复';

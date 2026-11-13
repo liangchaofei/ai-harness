@@ -5,7 +5,7 @@ import { isAbsolute, resolve } from 'node:path';
 import type { RunResult } from '@ai-harness/runtime';
 import type { CliSession } from '../types/session';
 import type { TaskConfig } from '../types/task';
-import { claimCheck, saveCheckReceipt } from './check-receipt';
+import { claimCheck, inspectCheckReceipt, saveCheckReceipt } from './check-receipt';
 import { openTaskWorkspace } from './prepare';
 
 /** 写入方创建，恢复方校验。记录一次待执行的验收及其适用内容。 */
@@ -70,8 +70,7 @@ export async function savePendingCheck(
   await writeFile(path, JSON.stringify(entry) + '\n', { flag: 'wx', mode: 0o600 });
 }
 
-/** 先确认副本和任务，再占用检查点并执行一次原有验收。 */
-export async function resumePendingCheck(path: string, task: TaskConfig, signal?: AbortSignal) {
+async function openPendingCheck(path: string, task: TaskConfig, signal?: AbortSignal) {
   const checkpointPath = await realpath(resolve(path));
   const info = await stat(checkpointPath);
   if (!info.isFile() || info.size > 8 * 1024) {
@@ -90,12 +89,29 @@ export async function resumePendingCheck(path: string, task: TaskConfig, signal?
   if (before.currentRevision !== entry.revision) {
     throw new Error('副本内容与检查点不一致。');
   }
+  const checkpointKey = createHash('sha256').update(text).digest('hex');
+  return { checkpointPath, checkpointKey, entry, session };
+}
+
+/** 操作者查看当前检查点。输出只含状态、路径和历史验收结论。 */
+export async function inspectPendingCheck(path: string, task: TaskConfig, signal?: AbortSignal) {
+  const { checkpointPath, checkpointKey, entry } = await openPendingCheck(path, task, signal);
+  const state = await inspectCheckReceipt(checkpointPath, checkpointKey);
+  return {
+    workspace: entry.workspace,
+    status: state.status,
+    ...(state.status === 'completed' ? { historicalPassed: state.receipt.passed } : {}),
+  };
+}
+
+/** 先确认副本和任务，再占用检查点并执行一次原有验收。 */
+export async function resumePendingCheck(path: string, task: TaskConfig, signal?: AbortSignal) {
+  const { checkpointPath, checkpointKey, entry, session } = await openPendingCheck(path, task, signal);
   const check = session.tools.find((tool) => tool.name === 'run_check');
   if (!check) throw new Error('当前任务缺少验收工具。');
 
   // 【修改】已有匹配回执时复用结果；已占用且无回执时由 claimCheck 拒绝继续。
   signal?.throwIfAborted();
-  const checkpointKey = createHash('sha256').update(text).digest('hex');
   const receipt = await claimCheck(checkpointPath, checkpointKey);
   if (receipt) {
     return { workspace: entry.workspace, passed: receipt.passed, feedback: receipt.feedback, reused: true };
