@@ -72,6 +72,28 @@ let recentStart = Math.max(0, groups.length - 1);
 
 此时 `task` 是原任务，`groups` 里依次是首段回答、追问和工具批次。因此 `followUpIndex` 是 1，`recentStart` 是 2。`inputFrom(2)` 会把 `groups[1]` 单独放在工具批次前，因为追问还没进入从下标 2 开始的近期窗口。循环试着把窗口扩到下标 1 时，追问已经在窗口里，代码就只从窗口取一次。目标太小时，扩展会停止，函数仍返回原任务、追问和最新批次。
 
+### 把追问放在近期批次前，且只放一次
+
+在 `apps/coding-cli/src/context/select-input.ts` 中看下面的摘录。它已包含在本步的完整实现里。
+
+```ts
+  const inputFrom = (start: number): Message[] => [
+    ...task,
+    ...(followUpIndex >= 0 && followUpIndex < start ? groups[followUpIndex]! : []),
+    ...groups.slice(start).flat(),
+  ];
+
+  for (let index = recentStart - 1; index >= 0; index -= 1) {
+    if (messageBytes(inputFrom(index)) > budget) {
+      break;
+    }
+    recentStart = index;
+  }
+  return inputFrom(recentStart);
+```
+
+在 `selectInput` 的五条消息样本里，首次组装从下标 2 开始，`followUpIndex = 1` 小于 `start = 2`，所以第二项展开一条追问，第三项展开两条工具消息。试着把窗口扩到下标 1 时，`followUpIndex < start` 为 false，追问改由第三项带入，候选仍只有一份追问。再扩到下标 0 才会多出首段回答。循环按候选数组的字节数决定是否更新 `recentStart`，最后返回实际选中的输入。
+
 ![从末尾保留工具批次，再把追问带上](/diagrams/23-follow-up-window.svg)
 
 新建 `examples/task-follow-up/inspect-input.ts`，把下面的完整示例写入。这个脚本构造那五条消息，调用你刚改好的选择器，再逐条打印选中结果。

@@ -119,6 +119,27 @@ if (!omitted || !latest) return undefined;
 
 :::
 
+### 同一条反馈如何变成一个验收状态
+
+在 `apps/coding-cli/src/context/evidence-summary.ts` 中看下面的摘录。它已包含在本步的完整实现里。
+
+```ts
+    const outcome = message.isError
+      ? 'tool-error'
+      : result.status === 'passed' && result.exitCode === 0 && report.passed === true
+        ? 'passed-at-check'
+        : result.status === 'failed' || report.passed === false
+          ? 'failed-at-check'
+          : 'unknown';
+    const failedCase = Array.isArray(report.cases)
+      ? report.cases.find((item) => item?.passed === false && typeof item.input === 'string')
+      : undefined;
+    const failedInput = failedCase?.input.slice(0, 64) as string | undefined;
+    checks.push({ index, id: message.toolCallId, outcome, failedInput });
+```
+
+在 `summarizeChecks` 中，`check_partial` 的工具调用有正常返回，`message.isError` 为 false。进程结果的 `status` 是 `failed`，用例报告里的 `passed` 也是 false，所以 `outcome` 是 `failed-at-check`。随后 `find` 选中根路径用例，把 `"/"` 保存为 `failedInput`。遇到 `check_complete` 时，三个通过条件都满足，`outcome` 变成 `passed-at-check`，没有失败用例可提取。两条记录依次进入 `checks`，后面的 `omitted` 和 `latest` 就从这里取。
+
 ### 先单独运行摘要，不等 CLI 接完
 
 新建 `examples/evidence-summary/inspect-summary.ts`。它用两条人工构造的验收反馈来模拟裁剪完成后的状态：`history` 有失败和通过两条记录，`selected` 只保留后者。这个入口直接调用摘要函数，不经过工具分组，也不会发请求。

@@ -15,6 +15,13 @@ export interface TaskMemory {
 export type CliOptions =
   | { help: true }
   | {
+      help: false;
+      /** 【新增】只读接续模式使用的会话日志路径。 */
+      resumeLog: string;
+      /** 追加到旧历史末尾的新问题。 */
+      question: string;
+    }
+  | {
       /** false 表示继续加载任务，此时才有 taskFile 和 planning。 */
       help: false;
       /** --task 指定的任务配置路径，由 loadTask 相对当前工作目录解析。 */

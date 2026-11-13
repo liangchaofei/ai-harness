@@ -6,6 +6,7 @@ import { loadTask } from './config/task';
 import { createModelCall } from './model';
 import { prepareSession } from './session/prepare';
 import { appendRun, createSessionLog } from './session/session-log';
+import { resumeConversation } from './session/resume-conversation';
 import { runSession } from './session/run';
 import { reportSession } from './report/report';
 import { printProgress, printBlock } from './report/terminal';
@@ -33,6 +34,23 @@ export async function runCli(
     if (options.help) {
       console.log(helpText);
       return 0;
+    }
+
+    // 【新增】只读接续先于任务配置和副本准备分流。
+    if ('resumeLog' in options) {
+      phase = '会话接续';
+      const result = await resumeConversation(
+        options.resumeLog,
+        options.question,
+        createCallModel,
+        controller.signal,
+      );
+      printBlock('接续停止', { status: result.status });
+      if (result.status === 'answered') {
+        printBlock('接续回答', result.answer.content);
+        return 0;
+      }
+      return result.status === 'cancelled' ? 130 : 1;
     }
 
     phase = '任务配置';

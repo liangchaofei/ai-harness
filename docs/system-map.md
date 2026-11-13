@@ -69,3 +69,5 @@ model定义模型输入输出契约，适配器认识服务协议；Runtime创�
 第 24 篇候选：inspect → acceptTask → saveAcceptedMemory → 按主题维护笔记 → 下次 loadTaskMemory。记忆写入状态独立于当前交付。
 
 第 25 篇候选：CLI 在运行段返回后将停止状态及新增消息追加到本地 JSONL。
+
+第 26 篇候选：CLI 读取完整会话段 → 拼回历史 → 追加追问 → Runtime 单次无工具调用。工作副本及执行状态不参与恢复。

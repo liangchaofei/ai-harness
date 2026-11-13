@@ -53,6 +53,27 @@ git switch -c agent/chapter-20-input-budget
 
 `groupHistory` 从前向后读。遇到 assistant 工具请求，就把所有请求 ID 放进 `pending`；紧随其后的每个反馈都必须消掉一个 ID。例如请求 `edit_complete` 和 `check_complete`，两个反馈都消费后才结束这一组。缺项、重复或孤立反馈会抛错，Runtime 按第 19 篇的输入准备失败路径停止，不发送有缺口的新输入。工具反馈的业务失败不是格式错误，它仍是应该保留的真实消息。
 
+### 跟着两个请求 ID 看一组消息何时完整
+
+在 `apps/coding-cli/src/context/select-input.ts` 中看下面的摘录。它已包含在本步的完整实现里。
+
+```ts
+      const pending = new Set(message.toolCalls.map((call) => call.id));
+      if (pending.size !== message.toolCalls.length) {
+        throw new Error('同批工具请求 ID 重复。');
+      }
+      while (pending.size > 0) {
+        const result = history[index++];
+        if (result?.role !== 'toolResult' || !pending.delete(result.toolCallId)) {
+          throw new Error('输入历史缺少与请求匹配的工具反馈。');
+        }
+        group.push(result);
+      }
+    }
+```
+
+在 `groupHistory` 读到修正批次时，`group` 先装着一条 assistant 请求消息，`pending` 有 `edit_complete` 和 `check_complete`。第一条反馈让集合只剩 `check_complete`，也让 `group` 增至两条。第二条反馈清空集合，这组共三条，再由 `groups.push(group)` 交给选择器。如果第二个反馈的 ID 写错，`delete` 返回 false，函数在组入列前抛错。
+
 ![批次配对与近期选择](/diagrams/20-select-groups.svg)
 
 ### 用第四轮的历史走一遍 `selectInput`
