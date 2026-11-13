@@ -17,6 +17,8 @@
 3. 写入函数从验收输出里找到 `input: "/"`、`expected: "/"` 的通过项，生成一条带验收脚本名和内容标识的笔记。同一文件内用主题决定新增或更新。
 4. 下一次独立任务启动时，第 22 篇的读取入口从同一个文件找到这条笔记。旧笔记提供调查方向，本次是否通过仍由本次验收决定。
 
+### 实现架构图
+
 ![一次任务把验收线索留给下一次任务](/diagrams/24-memory-writeback.svg)
 
 **验收标准。** 第一次首轮无记忆，交付后文件多出一条；第二次使用新副本，首轮能读到它，重复保存同一证据保持一条。新证据可更新同主题，设为停用后读取和自动更新都跳过。应用负责存取，Runtime 继续管理当次运行历史。
@@ -152,7 +154,11 @@ export async function readMemoryNotes(path: string, signal?: AbortSignal): Promi
 
 ## 第二步：从验收提取一条记录，再按主题保存
 
-新建 `apps/coding-cli/src/context/save-memory.ts`。它接收目标笔记和验收快照。先读下面两个摘录，再展开完整实现写入新文件。正式入口会在第三步接入。这里先只跟一条用例：操作者选的是 `/`，验收输出里要有同样的 `input`，且实际值与预期值相等。
+新建 `apps/coding-cli/src/context/save-memory.ts`。它接收目标笔记和验收快照。先展开下方的完整实现写入新文件，再按下面的摘录走读。正式入口会在第三步接入。这里先只跟一条用例：操作者选的是 `/`，验收输出里要有同样的 `input`，且实际值与预期值相等。
+
+::: details 完整实现 context/save-memory.ts
+<<< @/snippets/24-memory-writeback/apps/coding-cli/src/context/save-memory.ts
+:::
 
 在这个文件的 `saveAcceptedMemory` 里，下面几行位于解析 `check.stdout` 并确认 `report.cases` 是数组之后。摘录已包含在完整文件里。
 
@@ -198,10 +204,6 @@ const sample = report.cases.find((item: unknown) =>
 首次空文件时，`previous` 为空，代码追加 `next`。第二次同主题命中后，若提示、脚本和内容标识都一致，会提前返回 `unchanged`。证据变化时，代码只替换原来那一条，其他主题照常保留。停用的笔记会先返回 `disabled`。
 
 ![按主题决定追加、保留或替换](/diagrams/24-memory-upsert.svg)
-
-::: details 完整实现 context/save-memory.ts
-<<< @/snippets/24-memory-writeback/apps/coding-cli/src/context/save-memory.ts
-:::
 
 写文件时先在目标文件所在目录暂存完整 JSON，成功后再替换原文件。这样写到一半失败时，原笔记仍可读。本章的示例按顺序运行；多个进程同时更新同一文件需要额外的并发控制。
 

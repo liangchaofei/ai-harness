@@ -20,7 +20,9 @@
 
 所以正常读取的答案可能没有变化，**新增的是每个经 Runtime 执行的工具都要经过相同的检查步骤**。原工具的文件清单、记录是否存在等检查仍然保留，因为参数形状正确不代表动作被允许。
 
-## 先走一遍坏参数怎样得到修正
+## 本篇技术方案
+
+### 实施前，先走完一次具体过程
 
 继续使用原来的 `read_file`。它的工具说明要求 `path` 是字符串，且不能有额外字段；这份说明既发送给模型，也会成为本地检查的依据。
 
@@ -47,6 +49,8 @@
 这里要区分两件事：**schema 检查数据形状，工具检查这次动作是否允许、是否做得成**。`{path:'src/missing.ts'}` 的形状正确，但路径不在允许清单中，原工具仍会拒绝。schema 通过不等于授权通过，更不等于操作系统隔离。
 
 Pi 固定版本的 [prepareToolCall](https://github.com/badlogic/pi-mono/blob/8efd314fa3d3232ce197d8d7a6a5660530b9d83e/packages/agent/src/agent-loop.ts)会先查工具、调用参数验证，再进入执行路径。它的 [validateToolArguments](https://github.com/badlogic/pi-mono/blob/8efd314fa3d3232ce197d8d7a6a5660530b9d83e/packages/ai/src/utils/validation.ts)还包含类型转换和可选值处理。本篇借鉴“执行前统一验证、复用校验器”，采用 Ajv 验证已经使用的普通 JSON Schema，暂不自动把数值改成字符串或补上缺失字段。
+
+### 实现架构图
 
 [![工具声明在启动时准备，模型参数在执行前检查，结构通过后仍有工具语义边界](/diagrams/07-tool-gates.svg)](/diagrams/07-tool-gates.svg)
 

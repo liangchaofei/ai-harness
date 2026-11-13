@@ -12,6 +12,10 @@
 2. **下一轮输入只留下最近的通过反馈。** CLI 在发送前缩减输入，第一次失败的原文被省略。此时如果问「第一次哪个用例失败」，仅凭最近一批消息找不到答案。
 3. **CLI 从完整历史取回一小段证据。** 它摘出失败用例 `/` 和能查回原文的位置，把摘要放进本轮输入。完整历史仍由 Runtime 保存，CLI 仍用当前文件对应的验收结果判断交付。
 
+### 实现架构图
+
+![省略的失败证据怎样回到模型输入](/diagrams/21-implementation-architecture.svg)
+
 这里在 CLI 输入准备阶段做固定字段提取。原始反馈留在历史里，摘要只带模型回答眼前问题所需的信息。首次阅读先追 `/` 怎么回到输入，等这条路径走通，再看通过后又改文件为什么要重验。
 
 ### 先看一条输出
@@ -71,6 +75,10 @@ const report = typeof result.stdout === 'string' ? objectFromJson(result.stdout)
 
 ## 第二步：实现摘要和来源定位
 
+新建 `apps/coding-cli/src/context/evidence-summary.ts`。写入下面的完整实现。下文沿同一组验收反馈分段解释。
+
+<<< @/snippets/21-evidence-summary/apps/coding-cli/src/context/evidence-summary.ts
+
 先用开头那个两条消息的例子。完整历史 `history` 里有「失败、通过」，本轮选中的 `selected` 里只有「通过」。这个函数要交回一条摘要，让 CLI 可以把旧失败带进本轮。下面两处摘录都已包含在完整实现中。
 
 **怎样从一条反馈得到一条可回查的记录？** 上一步已经拿到 `failedInput`。这行再保存消息在完整历史里的位置和请求 ID。
@@ -99,10 +107,6 @@ if (!omitted || !latest) return undefined;
 两条验收都保留时，`omitted` 取不到值，函数返回 `undefined`。
 
 :::
-
-现在新建 `apps/coding-cli/src/context/evidence-summary.ts`。先按上面两处定位代码，返回消息里关于重验的字段可以留到第五步再读。
-
-<<< @/snippets/21-evidence-summary/apps/coding-cli/src/context/evidence-summary.ts
 
 ::: details 接入 CLI 后，在完整历史里核对位置
 
@@ -166,6 +170,30 @@ node --import tsx examples/evidence-summary/inspect-summary.ts
 
 ## 第三步：只把摘要加到本轮输入
 
+打开 `apps/coding-cli/src/session/run.ts`，在导入区加入 `import { summarizeChecks } from '../context/evidence-summary';`。在 `runSession` 的 `prepareMessages` 回调里，从 `const selected` 开始替换到原来的 `return selected;`，如下。
+
+```ts
+      const selected = historyBytes > MESSAGE_BUDGET_BYTES
+        ? selectInput(history, MESSAGE_BUDGET_BYTES - 1024)
+        : history;
+      const summary = summarizeChecks(history, selected);
+      const firstNonUser = selected.findIndex((message) => message.role !== 'user');
+      const boundary = firstNonUser < 0 ? selected.length : firstNonUser;
+      const input = summary
+        ? [...selected.slice(0, boundary), summary, ...selected.slice(boundary)]
+        : selected;
+      const selectedBytes = messageBytes(input);
+      console.log('输入选择', {
+        historyBytes,
+        inputBytes: selectedBytes,
+        budget: MESSAGE_BUDGET_BYTES,
+        omittedMessages: history.length - selected.length,
+        hasEvidenceSummary: summary !== undefined,
+        overBudget: selectedBytes > MESSAGE_BUDGET_BYTES,
+      });
+      return input;
+```
+
 第二步已经得到一条写着「第一次失败的是 `/`」的摘要。现在只追它怎么交给模型。先看 `prepareMessages` 里的这两处。
 
 ```ts
@@ -182,13 +210,13 @@ const input = summary
 
 `boundary` 是开头连续用户消息之后的位置。以路径修复为例，原任务在前，接着是带 `/` 的摘要，最后才是修正与验收通过的完整批次。回调最后 `return input`，Runtime 用这个数组发本轮请求。下面的完整文件已包含这两段。
 
-完整替换 `apps/coding-cli/src/session/run.ts`。保留原有 `runSession` 签名、工具、系统提示、运行预算和报告路径，增加摘要调用，并在超过字节目标时为摘要预留 1,024 字节。
-
-<<< @/snippets/21-evidence-summary/apps/coding-cli/src/session/run.ts
-
 ![完整历史与本轮摘要分开](/diagrams/21-summary-boundary.svg)
 
 摘要使用现有消息协议里的 `user` 角色承载，并明确标成应用生成的历史数据。插入在任务消息后、近期批次前，不拆开任何请求与反馈。它只从回调返回，下次仍从原历史重新计算。预留值是教学余量；如果任务、最近批次和摘要实际更大，仍如实报告 `overBudget`，不是服务硬上限。
+
+::: details 完整文件 apps/coding-cli/src/session/run.ts
+<<< @/snippets/21-evidence-summary/apps/coding-cli/src/session/run.ts
+:::
 
 ## 第四步：让固定模型必须找到早期失败证据
 
