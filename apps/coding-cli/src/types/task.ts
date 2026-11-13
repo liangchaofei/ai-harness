@@ -19,6 +19,8 @@ export type CliOptions =
       help: false;
       /** --task 指定的任务配置路径，由 loadTask 相对当前工作目录解析。 */
       taskFile: string;
+      /** 【新增】操作者指定的新会话记录文件，省略时只保留终端报告。 */
+      sessionLog?: string;
       /** 是否为本次运行提供 update_plan 工具，由 --plan 启用，默认关闭。 */
       planning: boolean;
       /** 第一段正常回答后提交的一条追问，省略时只运行一段。 */
