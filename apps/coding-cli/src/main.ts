@@ -5,6 +5,7 @@ import { parseArgs, helpText } from './config/args';
 import { loadTask } from './config/task';
 import { createModelCall } from './model';
 import { prepareSession } from './session/prepare';
+import { appendRun, createSessionLog } from './session/session-log';
 import { runSession } from './session/run';
 import { reportSession } from './report/report';
 import { printProgress, printBlock } from './report/terminal';
@@ -44,6 +45,13 @@ export async function runCli(
     session = await prepareSession(task, options.planning, controller.signal);
     printBlock('工作副本', session.root);
 
+    // 【新增】先独占创建文件，防止两次 CLI 运行混写。
+    let logPath: string | undefined;
+    if (options.sessionLog) {
+      phase = '会话记录';
+      logPath = await createSessionLog(options.sessionLog, session.root);
+    }
+
     phase = '运行与报告';
     const onEvent: RunEventListener = (event) => {
       printProgress(event);
@@ -58,9 +66,15 @@ export async function runCli(
     };
 
     const first = await runSession(task, session, callModel, controller.signal, onEvent, { fullHistory });
+    // 【新增】首段落盘之后才启动追问。
+    if (logPath) {
+      phase = '会话记录';
+      await appendRun(logPath, first, 0);
+      phase = '运行与报告';
+    }
     let result = first;
 
-    // 【新增】沿用已经准备的副本和工具，只给 Runtime 一个新的历史起点。
+    // 沿用已经准备的副本和工具，只给 Runtime 一个新的历史起点。
     if (options.followUp && first.status === 'answered' && !controller.signal.aborted) {
       printBlock('首段停止', {
         status: first.status,
@@ -73,6 +87,11 @@ export async function runCli(
         fullHistory,
       };
       result = await runSession(task, session, callModel, controller.signal, onEvent, nextInput);
+      if (logPath) {
+        phase = '会话记录';
+        await appendRun(logPath, result, first.messages.length);
+        phase = '运行与报告';
+      }
     }
 
     return await reportSession(task, session, result);

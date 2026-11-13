@@ -61,3 +61,5 @@ features:
 [第 23 篇：在同一个任务里继续追问](/guide/23-task-follow-up)在同一副本上接续用户问题，对照全量输入和自动策略。
 
 [第 24 篇：把已验收的经验留给下一个任务](/guide/24-memory-writeback)从当前验收提取线索，下次任务从磁盘取回。
+
+[第 25 篇：让 Coding Agent 退出后仍能查到会话](/guide/25-session-log)逐段保存会话记录。

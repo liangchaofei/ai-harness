@@ -15,6 +15,7 @@ export function parseArgs(args: readonly string[]): CliOptions {
   let taskFile: string | undefined;
   let planning = false;
   let followUp: string | undefined;
+  let sessionLog: string | undefined;
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
     if (arg === '--plan' && !planning) {
@@ -26,6 +27,13 @@ export function parseArgs(args: readonly string[]): CliOptions {
         throw new Error('追问内容缺失。');
       }
       followUp = value;
+    } else if (arg === '--session-log' && sessionLog === undefined) {
+      // 【新增】文件路径相对启动 CLI 时的工作目录。
+      const value = args[++i];
+      if (!value?.trim() || value.startsWith('--')) {
+        throw new Error('会话记录路径缺失。');
+      }
+      sessionLog = value;
     } else if (arg === '--task' && taskFile === undefined) {
       const value = args[++i];
       if (!value?.trim() || value.startsWith('--')) {
@@ -44,5 +52,6 @@ export function parseArgs(args: readonly string[]): CliOptions {
     taskFile,
     planning,
     ...(followUp ? { followUp } : {}),
+    ...(sessionLog ? { sessionLog } : {}),
   };
 }
