@@ -31,6 +31,19 @@ node --import tsx site/snippets/23-task-follow-up/examples/task-follow-up/inspec
 - 有追问时只创建一个副本。两种输入策略都能给出 `/` 和真实验收依据，并交付同一份修复。
 - 目标过小时，原任务、最新追问和最近完整工具批次仍保留。报告照常能查到原始工具反馈。
 
+## 本篇核心代码在哪
+
+先认准一个入口：`apps/coding-cli/src/main.ts` 的 `runCli`。首段 `runSession` 返回 `first` 后，`nextInput.messages` 把 `first.messages` 和新的用户追问拼成第二段的起点。随后，第二次 `runSession` 继续传入同一个 `session`。**前一句保住历史，后一句保住工作副本。** 这两处就是本篇实现「同一任务继续追问」的核心，[第三步有完整代码和数据轨迹](#第三步-把上一段历史交给下一段)。
+
+读其他文件时，可以用各自解决的问题来定位：
+
+| 读到哪里 | 这一段解决什么 |
+|---|---|
+| `config/args.ts` 的 `parseArgs` | 把终端传来的追问读成 `options.followUp` |
+| `session/run.ts` 的 `runSession` | 把第二段的历史起点交给 Runtime，并为每次模型调用准备输入 |
+| `context/select-input.ts` 的 `selectInput` | 历史太长时，避免把正在回答的追问裁掉 |
+| `examples/task-follow-up/main.ts` | 对照两种策略，检查模型能否从实际输入找到第一次验收失败的依据 |
+
 ## 动手前
 
 从第 22 篇接着做。确认仓库已有 `fixtures/code-tasks/route-memory.json` 任务配置、`fixtures/code-tasks/task-memory.json` 笔记数组，以及 `examples/input-budget/sample-model.ts`。保存上章的改动后再开分支。

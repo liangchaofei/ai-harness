@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 489" role="img" aria-labelledby="title desc">
+  <title id="title">第 24 篇在 Coding Agent 生命周期的位置</title>
+  <desc id="desc">当前任务加载配置后进入 Runtime 循环，CLI 审阅验收。第 24 篇在交付接受后将验收线索写入长期记忆。下一次任务启动时，第 22 篇的读取逻辑从同一文件取回线索。</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#4c6781"/></marker></defs>
+  <rect width="580" height="489" rx="16" fill="#f3f7fb"/>
+  <g stroke="#4c6781" stroke-width="2" fill="none" marker-end="url(#arrow)">
+    <path d="M290 106V123"/><path d="M290 186V203"/><path d="M290 261V290"/><path d="M290 365V382"/>
+  </g>
+  <g font-family="system-ui,sans-serif" fill="#183149">
+    <text x="26" y="36" font-size="22" font-weight="700">Coding Agent 的一次任务与下一次任务</text>
+    <rect x="26" y="54" width="528" height="52" rx="9" fill="#e0edfc"/>
+    <text x="43" y="86" font-size="20">当前任务启动 · CLI 加载配置与已有记忆</text>
+    <rect x="26" y="124" width="528" height="62" rx="9" fill="#e0edfc"/>
+    <text x="43" y="151" font-size="20">任务运行 · Runtime 执行 Agent 循环</text>
+    <text x="43" y="174" font-size="16">准备模型输入 → 模型决定动作 → 工具反馈写回历史</text>
+    <rect x="26" y="204" width="528" height="57" rx="9" fill="#e0edfc"/>
+    <text x="43" y="239" font-size="20">任务收尾 · CLI 核对当前副本与实际验收</text>
+    <text x="303" y="282" font-size="15">交付被接受且启用记忆写入</text>
+    <rect x="26" y="291" width="528" height="74" rx="9" fill="#fff0d9" stroke="#a65e18" stroke-width="2"/>
+    <text x="43" y="321" font-size="20" font-weight="700">第 24 篇 · 从验收提取线索并写入长期记忆</text>
+    <text x="43" y="347" font-size="16">保存到笔记文件，供独立任务重新读取</text>
+    <rect x="26" y="383" width="528" height="63" rx="9" fill="#e0f1e9"/>
+    <text x="43" y="411" font-size="20">下一次任务启动 · 第 22 篇按主题读回</text>
+    <text x="43" y="435" font-size="16">CLI 在准备模型输入时加入线索</text>
+    <text x="26" y="473" font-size="16">课程位置：第四阶段 · 长任务的信息管理</text>
+  </g>
+</svg>

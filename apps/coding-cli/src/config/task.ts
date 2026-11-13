@@ -2,7 +2,7 @@
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { loadTaskMemory } from '../context/task-memory';
-import type { TaskConfig } from '../types/task';
+import type { MemoryCapture, TaskConfig } from '../types/task';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -16,7 +16,7 @@ export async function loadTask(taskFile: string, signal?: AbortSignal): Promise<
   if (!info.isFile() || info.size > 16 * 1024) throw new Error('任务配置应为小型JSON文件。');
   const value: unknown = JSON.parse(await readFile(configPath, { encoding: 'utf8', signal }));
   const keys = ['source', 'prompt', 'writablePaths', 'checkScript'];
-  // 【修改】保留四个必填字段，只额外允许可选的 memory。
+  // 保留四个必填字段，只额外允许可选的 memory。
   if (
     !isRecord(value) ||
     keys.some((key) => !Object.hasOwn(value, key)) ||
@@ -40,8 +40,28 @@ export async function loadTask(taskFile: string, signal?: AbortSignal): Promise<
   // 验收在来源之外，避免把它复制到模型处理的材料中；这不是OS隔离。
   if (scriptRelative === '' || (!isAbsolute(scriptRelative)
     && scriptRelative !== '..' && !scriptRelative.startsWith('../'))) throw new Error('验收应在材料目录之外。');
-  // 【新增】只在加载任务时读取；模型调用期间复用选中的一条记录。
+  // 只在加载任务时读取；模型调用期间复用选中的一条记录。
   const memory = await loadTaskMemory(value.memory, base, signal);
+  // 【新增】读取笔记和授权写入是两项独立的配置决定。
+  let memoryCapture: MemoryCapture | undefined;
+  if (isRecord(value.memory) && Object.hasOwn(value.memory, 'captureCase')) {
+    const { file, topic, captureCase } = value.memory;
+    if (
+      typeof file !== 'string' ||
+      typeof topic !== 'string' ||
+      typeof captureCase !== 'string' ||
+      captureCase.length === 0 ||
+      captureCase.length > 64
+    ) {
+      throw new Error('记忆写入需要指定可核对的验收用例。');
+    }
+    memoryCapture = {
+      path: await realpath(resolve(base, file)),
+      topic: topic.trim(),
+      caseInput: captureCase,
+    };
+  }
+
   signal?.throwIfAborted();
   return {
     source: sourcePath,
@@ -49,6 +69,7 @@ export async function loadTask(taskFile: string, signal?: AbortSignal): Promise<
     writablePaths: [...writablePaths],
     checkScript: scriptPath,
     ...(memory ? { memory } : {}),
+    ...(memoryCapture ? { memoryCapture } : {}),
   };
 
 }
