@@ -55,6 +55,7 @@ export default defineConfig({
         { text: '26 退出后继续追问上一场任务', link: '/guide/26-resume-conversation' },
         { text: '27 改完文件后，重启接着验收', link: '/guide/27-checkpoint' },
         { text: '28 验收中断后，先确认结果再决定是否重跑', link: '/guide/28-check-receipt' },
+        { text: '29 验收进程中断后，怎样核对现场', link: '/guide/29-interrupted-check' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },

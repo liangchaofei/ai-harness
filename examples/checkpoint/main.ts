@@ -1,14 +1,14 @@
 // 【新增文件】用固定模型在改完后交接，再用另一个进程恢复。
 import { runCli } from '../../apps/coding-cli/src/main';
 
-const [mode, path] = process.argv.slice(2);
+const [mode, path, taskFile = 'fixtures/code-tasks/route.json'] = process.argv.slice(2);
 if (!path || (mode !== 'save' && mode !== 'resume')) {
-  throw new Error('用法：main.ts save|resume <检查点>');
+  throw new Error('用法：main.ts save|resume <检查点> [任务配置]');
 }
 
 let turn = 0;
 process.exitCode = await runCli(
-  ['--task', 'fixtures/code-tasks/route.json', mode === 'save' ? '--checkpoint' : '--resume-check', path],
+  ['--task', taskFile, mode === 'save' ? '--checkpoint' : '--resume-check', path],
   () => {
     if (mode === 'resume') {
       throw new Error('恢复验收无需创建模型。');
