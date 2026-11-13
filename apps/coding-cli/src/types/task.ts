@@ -1,5 +1,7 @@
 // 终端参数与已解析任务的应用契约。
-/** 【新增】loadTaskMemory 选中的一条旧记录，由 runSession 转成本轮输入中的参考消息。 */
+import type { Message } from '@ai-harness/model';
+
+/** loadTaskMemory 选中的一条旧记录，由 runSession 转成本轮输入中的参考消息。 */
 export interface TaskMemory {
   /** 与任务配置里的 memory.topic 精确匹配的主题，例如 route-repair。 */
   topic: string;
@@ -19,6 +21,8 @@ export type CliOptions =
       taskFile: string;
       /** 是否为本次运行提供 update_plan 工具，由 --plan 启用，默认关闭。 */
       planning: boolean;
+      /** 【新增】第一段正常回答后提交的一条追问，省略时只运行一段。 */
+      followUp?: string;
     };
 
 /** loadTask创建；相对路径已按任务文件所在目录解析为真实绝对路径。 */
@@ -31,6 +35,14 @@ export interface TaskConfig {
   writablePaths: string[];
   /** 副本之外的可信.mjs验收；命令固定为当前Node加tsx和此脚本。 */
   checkScript: string;
-  /** 【新增】loadTask 已选中的外部笔记。未配置或未命中时省略。 */
+  /** loadTask 已选中的外部笔记。未配置或未命中时省略。 */
   memory?: TaskMemory;
+}
+
+/** 【新增】应用给单段运行的输入选项。正常 CLI 使用默认输入策略。 */
+export interface RunInputOptions {
+  /** 第二段的完整起点，含上一段历史和本次追问。省略时从原任务开始。 */
+  messages?: readonly Message[];
+  /** 观察入口用的全量对照。为 true 时保留全量历史，跳过裁剪和验收摘要。 */
+  fullHistory?: boolean;
 }

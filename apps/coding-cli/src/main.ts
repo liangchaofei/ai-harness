@@ -1,5 +1,6 @@
 // 应用生命周期：参数→配置→副本→运行→报告→释放监听。
-import type { ModelCall } from '@ai-harness/runtime';
+import type { RunInputOptions } from './types/task';
+import type { ModelCall, RunEventListener } from '@ai-harness/runtime';
 import { parseArgs, helpText } from './config/args';
 import { loadTask } from './config/task';
 import { createModelCall } from './model';
@@ -9,10 +10,11 @@ import { reportSession } from './report/report';
 import { printProgress, printBlock } from './report/terminal';
 import type { CliSession } from './types/session';
 
-/** cli接住退出码；固定观察入口可注入模型函数，真实入口不提供此参数。 */
+/** CLI 接收退出码。观察入口可注入模型，并开启全量历史对照。 */
 export async function runCli(
   args: readonly string[],
   createCallModel: () => ModelCall = createModelCall,
+  fullHistory = false,
 ): Promise<number> {
   const controller = new AbortController();
   const onInterrupt = () => {
@@ -43,23 +45,35 @@ export async function runCli(
     printBlock('工作副本', session.root);
 
     phase = '运行与报告';
-    const result = await runSession(
-      task,
-      session,
-      callModel,
-      controller.signal,
-      (event) => {
-        printProgress(event);
-        if (
-          event.type === 'tool_end' &&
-          event.toolName === 'update_plan' &&
-          !event.isError &&
-          session?.plan
-        ) {
-          printBlock('任务计划（模型声明）', session.plan.read());
-        }
-      },
-    );
+    const onEvent: RunEventListener = (event) => {
+      printProgress(event);
+      if (
+        event.type === 'tool_end' &&
+        event.toolName === 'update_plan' &&
+        !event.isError &&
+        session?.plan
+      ) {
+        printBlock('任务计划（模型声明）', session.plan.read());
+      }
+    };
+
+    const first = await runSession(task, session, callModel, controller.signal, onEvent, { fullHistory });
+    let result = first;
+
+    // 【新增】沿用已经准备的副本和工具，只给 Runtime 一个新的历史起点。
+    if (options.followUp && first.status === 'answered' && !controller.signal.aborted) {
+      printBlock('首段停止', {
+        status: first.status,
+        modelCalls: first.modelCalls,
+        toolCalls: first.toolCalls,
+        runId: first.runId,
+      });
+      const nextInput: RunInputOptions = {
+        messages: [...first.messages, { role: 'user', content: options.followUp }],
+        fullHistory,
+      };
+      result = await runSession(task, session, callModel, controller.signal, onEvent, nextInput);
+    }
 
     return await reportSession(task, session, result);
   } catch {

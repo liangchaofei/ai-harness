@@ -2,7 +2,7 @@
 
 第 21 篇从**这次运行**的历史里找回旧验收。这一次，CLI 刚开始一项新任务，还没有工具反馈。上次做类似任务留下的记录，怎样才能在这一轮帮上忙？
 
-本篇实现 Agent **长期记忆的读取**。第 19–21 篇处理当前任务的历史和本轮输入，属于短期记忆。Runtime 保存当前运行历史，应用加载跨任务笔记，并按需把这两类信息放进模型输入。长期记忆的写入和更新在[第四阶段后续安排](/roadmap)中继续。
+本篇实现 Agent **长期记忆的读取**。第 19 至 21 篇处理当前任务的历史和本轮输入，属于短期记忆。Runtime 保存当前运行历史，应用加载跨任务笔记，并按需把这两类信息放进模型输入。长期记忆的写入和更新在[第四阶段后续安排](/roadmap)中继续。
 
 ## 本篇技术方案
 
@@ -35,6 +35,13 @@ node --import tsx site/snippets/22-task-memory/examples/task-memory/inspect-memo
 git status --short
 git switch -c agent/chapter-22-task-memory
 ```
+
+| 步骤 | 这一段要解决的问题 | 做完先检查什么 |
+|---|---|---|
+| 1. 读取笔记 | 两条笔记里哪条适用 | 观察脚本打印一条命中的记录 |
+| 2. 加载任务 | 正式入口从哪拿主题和文件名 | `loadTask` 返回的 `memory` 已包含 `topic`、`source` 和 `hint` |
+| 3. 准备输入 | 哪一行让模型收到这条笔记 | `prepareMessages` 返回的 `input[1]` 是参考消息 |
+| 4. 实际运行 | 线索送到了吗，修复验收了吗 | 先看模型回调收到的消息，再看真实验收 |
 
 ## 第一步：从两条记录里选出路径线索
 
@@ -129,7 +136,7 @@ const memory = await loadTaskMemory(value.memory, base, signal);
 
 完整替换 `apps/coding-cli/src/session/run.ts`。本步仍保留 `runSession`、系统提示、工具和运行预算。重点看同一个文件里的两个位置：
 
-1. **`runSession` 中，`return runAgent({...})` 之前。** 把第二步得到的 `task.memory` 包成一条消息，消息正文先说明它是调查线索，再带上来源与提示。没有命中时，局部变量 `memory` 保持 `undefined`。
+1. **`runSession` 中，`return runAgent({...})` 之前。** 把第二步得到的 `task.memory` 包成一条消息。前者是包含 `topic`、`source`、`hint` 的对象，后者是包含 `role`、`content` 的模型消息。代码用 `JSON.stringify(task.memory)` 将三个字段写入正文，在正文开头标明它是调查线索。没有命中时，局部变量 `memory` 保持 `undefined`。
 2. **`runAgent` 的 `prepareMessages` 回调中，算出 `boundary` 之后。** 把这条消息插在原任务后、近期批次前。下面是完整文件中构造 `input` 的那几行。
 
 ```ts
@@ -177,7 +184,20 @@ node --import tsx examples/task-memory/main.ts baseline
 | 报告的原始工具反馈 | 读文件、修改、第一次验收失败、修正后通过 | 相同的固定动作与验收 |
 | `accepted` | `true` | `true` |
 
-如果默认模式只报「任务配置失败」，先确认第二步的两个 JSON 都已保存，且文件名与上表一致。默认入口会先打开 `route-memory.json`，再按其中的 `memory.file` 读取 `task-memory.json`。
+如果默认模式只报「任务配置失败」，回到第二步核对两个 JSON 的文件名和内容。默认入口会先打开 `route-memory.json`，再按其中的 `memory.file` 读取 `task-memory.json`。
+
+### 对照日志，跟完第一轮
+
+在有记忆的运行里，先看 `输入准备 1：历史 1 条，本轮 2 条`。这时完整历史只有用户任务，本轮多出来的是 CLI 拼进去的旧线索。接着看 `固定模型收到的记忆`，这条日志由 `examples/task-memory/main.ts` 的模型回调从 `context.messages` 打印，能核对那条消息确实传到了调用方。直到结尾的 `accepted: true` 和 `checkMatchesCurrent: true`，才确认当前副本的修复通过了验收。
+
+::: details 想看数组里的值，可以打这两个断点
+
+用 `node --inspect-brk --import tsx examples/task-memory/main.ts` 启动并连接 Node 调试器。
+
+1. 在 `apps/coding-cli/src/session/run.ts` 的 `prepareMessages` 回调里断到 `return input`。第一轮比较 `history[0]`、`input[0]` 和 `input[1]`。前两项是同一份任务内容，第三项的 `content` 里有 `route-repair` 和 `task-memory.json`。
+2. 在 `examples/task-memory/main.ts` 的模型回调里断到 `const note = memories[0]` 的下一行。此时 `note.content` 就是上一个断点里看到的 `input[1].content`。第一处看到的是 CLI 准备的输入，第二处看到的是 Runtime 传给模型回调的输入。
+
+:::
 
 这里的对照验证线索能送达模型调用，以及原任务依旧可运行。固定模型的动作事先写好，这两次结果无法判断线索是否提升了真实模型的判断质量。
 

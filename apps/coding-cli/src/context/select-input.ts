@@ -1,4 +1,4 @@
-// 【新增文件】只选择本轮输入，不修改完整历史。
+// 从完整历史选择本轮消息。
 import type { Message } from '@ai-harness/model';
 
 /** 本地 JSON 的 UTF-8 字节数；不含服务协议、工具定义和系统提示。 */
@@ -36,7 +36,7 @@ function groupHistory(history: readonly Message[]): Message[][] {
   return groups;
 }
 
-/** 保留开头的任务消息和尽可能多的连续近期组；最后一组不能省略。 */
+/** 保留开头任务、最新追问和最后一组，其余按完整的近期批次取舍。 */
 export function selectInput(history: readonly Message[], budget: number): Message[] {
   if (!Number.isSafeInteger(budget) || budget < 1 || history[0]?.role !== 'user') {
     throw new Error('输入预算必须为正整数，历史必须以任务消息开始。');
@@ -46,14 +46,22 @@ export function selectInput(history: readonly Message[], budget: number): Messag
   while (groups[0]?.[0]?.role === 'user') {
     task.push(...groups.shift()!);
   }
-  let recent = groups.pop() ?? [];
+  // 【修改】最新追问可能早于最后一批工具结果，单独保留。
+  const followUpIndex = groups.map((group) => group[0]!.role).lastIndexOf('user');
+  let recentStart = Math.max(0, groups.length - 1);
 
-  for (let index = groups.length - 1; index >= 0; index -= 1) {
-    const candidate = [...groups[index]!, ...recent];
-    if (messageBytes([...task, ...candidate]) > budget) {
+  // 当近期窗口尚未包含追问，把它放在近期窗口前。窗口包含它时只取一次。
+  const inputFrom = (start: number): Message[] => [
+    ...task,
+    ...(followUpIndex >= 0 && followUpIndex < start ? groups[followUpIndex]! : []),
+    ...groups.slice(start).flat(),
+  ];
+
+  for (let index = recentStart - 1; index >= 0; index -= 1) {
+    if (messageBytes(inputFrom(index)) > budget) {
       break;
     }
-    recent = candidate;
+    recentStart = index;
   }
-  return [...task, ...recent];
+  return inputFrom(recentStart);
 }
