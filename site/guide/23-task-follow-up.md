@@ -11,6 +11,8 @@
 3. **第二段准备输入，再回答。** 全量策略能看到第一次失败的原始反馈。自动策略省略了原始反馈，但第 21 篇的摘要把失败用例及来源带回来。第 22 篇的外部笔记也可以在场，两组都拿到它。
 4. **CLI 审阅当前副本。** 第二段回答结束后，报告仍用匹配当前内容的实际验收判断交付。输入对照另看模型调用次数、消息字节和答案依据。
 
+### 实现架构图
+
 ![一次 CLI 进程怎样接续同一个任务](/diagrams/23-follow-up-flow.svg)
 
 这里先做一条在启动时传入的追问。每段有独立的运行 ID、调用预算和时限，两段按顺序运行。会话对象留在当前进程里，第五阶段再做进程退出后的会话保存与恢复。
@@ -57,11 +59,28 @@ git switch -c agent/chapter-23-task-follow-up
 
 第 20 篇保留原任务和最后一组。在上面的五条消息里，最后一组已变成新一批工具请求和反馈。如果输入太小，旧规则会把追问留在裁剪线外。这样模型刚得到工具结果，却可能丢掉它要回答的问题。
 
-完整替换 `apps/coding-cli/src/context/select-input.ts`。保留 `messageBytes` 和 `groupHistory`。只修改 `selectInput` 取近期组的部分，让它另外保留最后一条用户消息。
+打开 `apps/coding-cli/src/context/select-input.ts`。在 `selectInput` 内，从 `let recent = groups.pop() ?? [];` 开始，替换到函数最后的返回语句，保留末尾花括号。下面是完整替换段。
 
-::: details 完整文件 context/select-input.ts
-<<< @/snippets/23-task-follow-up/apps/coding-cli/src/context/select-input.ts
-:::
+```ts
+  // 【修改】最新追问可能早于最后一批工具结果，单独保留。
+  const followUpIndex = groups.map((group) => group[0]!.role).lastIndexOf('user');
+  let recentStart = Math.max(0, groups.length - 1);
+
+  // 当近期窗口尚未包含追问，把它放在近期窗口前。窗口包含它时只取一次。
+  const inputFrom = (start: number): Message[] => [
+    ...task,
+    ...(followUpIndex >= 0 && followUpIndex < start ? groups[followUpIndex]! : []),
+    ...groups.slice(start).flat(),
+  ];
+
+  for (let index = recentStart - 1; index >= 0; index -= 1) {
+    if (messageBytes(inputFrom(index)) > budget) {
+      break;
+    }
+    recentStart = index;
+  }
+  return inputFrom(recentStart);
+```
 
 在同一文件的 `selectInput` 中，取出开头的原任务后，找到下面这两行。它们已包含在完整文件里。
 
@@ -96,6 +115,10 @@ let recentStart = Math.max(0, groups.length - 1);
 
 ![从末尾保留工具批次，再把追问带上](/diagrams/23-follow-up-window.svg)
 
+::: details 完整文件 context/select-input.ts
+<<< @/snippets/23-task-follow-up/apps/coding-cli/src/context/select-input.ts
+:::
+
 新建 `examples/task-follow-up/inspect-input.ts`，把下面的完整示例写入。这个脚本构造那五条消息，调用你刚改好的选择器，再逐条打印选中结果。
 
 ::: details 完整示例 inspect-input.ts
@@ -110,13 +133,42 @@ node --import tsx examples/task-follow-up/inspect-input.ts
 
 ## 第二步：让 CLI 读到一条追问
 
-先替换 `apps/coding-cli/src/types/task.ts`。在 `CliOptions` 中新增 `followUp?`，保存终端传来的问题。再新增 `RunInputOptions`，用来把第二段的初始历史交给运行入口，也为观察脚本提供全量对照。原有任务配置和记忆字段继续沿用。
+打开 `apps/coding-cli/src/types/task.ts`，先加 `import type { Message } from '@ai-harness/model';`。在 `CliOptions` 的普通任务分支中，紧接 `planning: boolean;` 加入：
+
+```ts
+      /** 【新增】第一段正常回答后提交的一条追问，省略时只运行一段。 */
+      followUp?: string;
+```
+
+然后在文件末尾追加下面的接口。`messages` 为第二段提供历史起点，`fullHistory` 让观察脚本选择全量对照。
+
+```ts
+/** 【新增】应用给单段运行的输入选项。正常 CLI 使用默认输入策略。 */
+export interface RunInputOptions {
+  /** 第二段的完整起点，含上一段历史和本次追问。省略时从原任务开始。 */
+  messages?: readonly Message[];
+  /** 观察入口用的全量对照。为 true 时保留全量历史，跳过裁剪和验收摘要。 */
+  fullHistory?: boolean;
+}
+```
 
 ::: details 完整文件 types/task.ts
 <<< @/snippets/23-task-follow-up/apps/coding-cli/src/types/task.ts
 :::
 
-再替换 `apps/coding-cli/src/config/args.ts`。在 `parseArgs` 的循环里处理 `--follow-up`，读取紧随其后的一个参数。终端引号让一句含空格的追问仍是一个参数。重复传入或没有值会走参数错误。解析成功后，`runCli` 会从 `options.followUp` 读到这句话。
+打开 `apps/coding-cli/src/config/args.ts`。在 `parseArgs` 里的 `let planning` 后添加 `let followUp: string | undefined;`。在参数循环中，找到以 `} else if (arg === '--task'` 开头的整行，在它前面插入：
+
+```ts
+    } else if (arg === '--follow-up' && followUp === undefined) {
+      // 【新增】读取一条用户追问。引号由终端处理。
+      const value = args[++i]?.trim();
+      if (!value || value.startsWith('--')) {
+        throw new Error('追问内容缺失。');
+      }
+      followUp = value;
+```
+
+原来的 `--task` 行开头的花括号会闭合这个分支。终端引号让整句追问作为一个参数，空值和重复传入会走参数错误。在函数的返回对象中紧接 `planning,` 加入 `...(followUp ? { followUp } : {}),`，让 `runCli` 能拿到问题。最后在 `helpText` 加上 `[--follow-up <问题>]` 和用途说明。
 
 ::: details 完整文件 config/args.ts
 <<< @/snippets/23-task-follow-up/apps/coding-cli/src/config/args.ts
@@ -124,7 +176,27 @@ node --import tsx examples/task-follow-up/inspect-input.ts
 
 ## 第三步：把上一段历史交给下一段
 
-先替换 `apps/coding-cli/src/session/run.ts`。保留 `runSession` 的工具、系统提示和预算，新增最后一个可选参数 `inputOptions`。首段没有传入历史，所以从 `task.prompt` 开始。第二段从 `inputOptions.messages` 开始。默认仍用自动策略。全量对照保留完整历史并省略验收摘要，两组继续使用同一条外部笔记。
+打开 `apps/coding-cli/src/session/run.ts`，把 `RunInputOptions` 加入已有的 `../types/task` 类型导入，再在 `runSession` 的 `onEvent` 参数后加 `inputOptions: RunInputOptions = {},`。在 `runAgent` 配置对象中替换原来的 `messages` 属性：
+
+```ts
+    // 【修改】第二段复用上一段的完整历史，并从追加的追问继续。
+    messages: inputOptions.messages ?? [
+      {
+        role: 'user',
+        content: task.prompt,
+      },
+    ],
+```
+
+首段没有传入历史，会从 `task.prompt` 开始。第二段从调用方给出的历史开始。在同一函数的 `prepareMessages` 回调中，用下面这段替换 `const selected` 和 `const summary`。全量对照跳过裁剪和摘要，两组都继续使用同一条外部笔记。
+
+```ts
+      // 【修改】全量对照使用同一条外部记忆，区别只在历史选择和摘要。
+      const selected = !inputOptions.fullHistory && historyBytes + memoryBytes > MESSAGE_BUDGET_BYTES
+        ? selectInput(history, MESSAGE_BUDGET_BYTES - memoryBytes - 1_024)
+        : history;
+      const summary = inputOptions.fullHistory ? undefined : summarizeChecks(history, selected);
+```
 
 在这个文件的 `runSession` 中，关注传给 `runAgent` 的 `messages` 和 `prepareMessages`。前者给 Runtime 一份完整起点，后者每次模型调用前从完整历史派生本轮输入。即使自动策略在追问时省略了 `check_partial` 的原文，下一轮仍可从完整历史生成摘要。
 
@@ -132,17 +204,43 @@ node --import tsx examples/task-follow-up/inspect-input.ts
 <<< @/snippets/23-task-follow-up/apps/coding-cli/src/session/run.ts
 :::
 
-然后完整替换 `apps/coding-cli/src/main.ts`。保留参数加载、取消监听、模型创建、副本准备和最后的报告。把运行事件回调提到 `onEvent` 变量里供两段共用。首段返回 `first` 后，若有追问且状态为 `answered`，`runCli` 才进入第二段。
+打开 `apps/coding-cli/src/main.ts`，增加 `import type { RunInputOptions } from './types/task';`，并把 `RunEventListener` 加入现有的 Runtime 类型导入。在 `runCli` 参数列表末尾加 `fullHistory = false,`，给观察脚本保留全量对照入口。
 
-在同一文件的 `runCli` 中，下面这一段位于判断 `first.status` 的分支内，已包含在完整实现中。
+在 `runCli` 中，从第 22 篇的 `const result = await runSession(...)` 开始，替换那次调用的整个语句，保留下方的 `return await reportSession(task, session, result);`：
 
 ```ts
-const nextInput: RunInputOptions = {
-  messages: [...first.messages, { role: 'user', content: options.followUp }],
-  fullHistory,
-};
-result = await runSession(task, session, callModel, controller.signal, onEvent, nextInput);
+    const onEvent: RunEventListener = (event) => {
+      printProgress(event);
+      if (
+        event.type === 'tool_end' &&
+        event.toolName === 'update_plan' &&
+        !event.isError &&
+        session?.plan
+      ) {
+        printBlock('任务计划（模型声明）', session.plan.read());
+      }
+    };
+
+    const first = await runSession(task, session, callModel, controller.signal, onEvent, { fullHistory });
+    let result = first;
+
+    // 【新增】沿用已经准备的副本和工具，只给 Runtime 一个新的历史起点。
+    if (options.followUp && first.status === 'answered' && !controller.signal.aborted) {
+      printBlock('首段停止', {
+        status: first.status,
+        modelCalls: first.modelCalls,
+        toolCalls: first.toolCalls,
+        runId: first.runId,
+      });
+      const nextInput: RunInputOptions = {
+        messages: [...first.messages, { role: 'user', content: options.followUp }],
+        fullHistory,
+      };
+      result = await runSession(task, session, callModel, controller.signal, onEvent, nextInput);
+    }
 ```
+
+这里把原先传给 `runSession` 的事件回调提成 `onEvent`，供两段共用。首段正常回答、传了追问且没有取消时，才进入第二段。
 
 用固定示例对照。`first.messages` 有 11 条，包括最初的任务、三个请求与反馈批次以及首段回答。数组展开后追加一个 `user`，`nextInput.messages` 就有 12 条，最后一条正是追问。两次调用拿到的是同一个 `session`，所以第二段仍能访问已经修好的文件。最后 `reportSession` 收到第二段结果和这个 `session`，一次性报告累积历史，并重新查看当前副本与验收是否匹配。
 
@@ -156,11 +254,11 @@ result = await runSession(task, session, callModel, controller.signal, onEvent, 
 
 新建 `examples/task-follow-up/main.ts`。它让两组都运行同一个配置、同一套固定修复动作和同一句追问。每次调用前累计 `context.messages` 的字节数。追问那一轮，固定回调从 `readFailure` 取得旧失败的来源，再确认 `check_complete` 确实通过。找不到依据就报错。
 
-想看两组差异，先在这个文件里找到 `readFailure`。全量模式走函数的第一个分支。它在本轮消息中找到 `check_partial`，从外层工具结果的 `stdout` 解析用例报告，取得第一条失败用例的 `input`。自动模式走第二个分支。它读第 21 篇生成的摘要，从 `omitted` 核对请求 ID 和 `failedInput`。两条路最后都得到 `input: '/'`，`source` 则会告诉你走了哪条路。
-
 ::: details 完整示例 examples/task-follow-up/main.ts
 <<< @/snippets/23-task-follow-up/examples/task-follow-up/main.ts
 :::
+
+想看两组差异，先在这个文件里找到 `readFailure`。全量模式走函数的第一个分支。它在本轮消息中找到 `check_partial`，从外层工具结果的 `stdout` 解析用例报告，取得第一条失败用例的 `input`。自动模式走第二个分支。它读第 21 篇生成的摘要，从 `omitted` 核对请求 ID 和 `failedInput`。两条路最后都得到 `input: '/'`，`source` 则会告诉你走了哪条路。
 
 ```bash
 npm run check

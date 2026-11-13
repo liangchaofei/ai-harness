@@ -8,7 +8,9 @@ pageClass: run-cancellation
 
 这是[第二阶段](/roadmap#第二阶段-逐篇大纲)的第五个单元，继续建设可控制的 Agent Runtime。09 让模型输出逐片可见；现在看到运行方向不合适时，应用还需要能叫停。整次任务期限与预算管理留给 11，本篇保留单次 HTTP 30 秒和原有调用次数上限。
 
-## 实施前：先走完整个实现逻辑
+## 本篇技术方案
+
+### 实施前，先走完一次具体过程
 
 仍用代码审查任务：模型请求读取 `src/cart.ts`，文件内容由已有的 `read_file` 返回。任务材料继续是 `fixtures/code-review/src/cart.ts`，本篇不新增业务规则。
 
@@ -23,6 +25,8 @@ pageClass: run-cancellation
 5. **返回专门的停止结果。** 应用收到 `status: 'cancelled'`，显示“未交付答案”，并移除 Ctrl+C 监听。Runtime 不再执行新的工具或开始第三次模型调用。
 
 取消若发生在一批工具中，原则相同：先前完成的项保留，正在取消的项不伪造结果，后面的项不开始。运行可能留下一条 assistant 请求及其中部分 toolResult；这是停止记录，不是可以直接重新发送服务的完整对话。如何补齐协议、确认副作用并恢复，属于后面的可靠执行阶段。
+
+### 实现架构图
 
 [![应用持有取消控制器，Runtime 保存历史，模型与工具只读取信号](/diagrams/10-cancel-ownership.svg)](/diagrams/10-cancel-ownership.svg)
 

@@ -15,6 +15,10 @@
 3. **第四轮发送前，CLI 选择消息。** 这时完整历史超过 4,096 字节。CLI 从 Runtime 交来的历史副本里保留原任务和最后一批，再从近到远试加旧批次。第一次修改和失败验收还能放下，最早的读取批次超出目标，整批省略。
 4. **模型收到两次验收反馈，CLI 判断交付。** Runtime 把选好的 7 条消息交给模型完成回答。CLI 根据当前文件及与之匹配的实际验收判断是否接受，并从完整历史生成报告，早期读取仍可回查。
 
+### 实现架构图
+
+![历史怎样变成本轮较短的输入](/diagrams/20-implementation-architecture.svg)
+
 ### 职责与取舍
 
 - **选择策略放在 CLI。** Runtime 持有完整历史，在每轮调用前接收应用选出的消息。这样其他应用复用 Runtime 时可以定义自己的选择策略。
@@ -94,15 +98,39 @@ git switch -c agent/chapter-20-input-budget
 
 ## 第二步：在 Agent 调用模型前自动判断
 
-完整替换 `apps/coding-cli/src/session/run.ts`。保留任务提示、工具、信号、事件和原运行预算；加入内部常量 `MESSAGE_BUDGET_BYTES` 和 `prepareMessages` 回调。先计量，超过目标才调用 `selectInput`。本篇用 4,096 字节让示例在同一次运行中出现全量和选择两种路径；这个数没有从提供商窗口推导。
+打开 `apps/coding-cli/src/session/run.ts`。保留任务提示、工具、信号、事件和原运行预算；加入内部常量 `MESSAGE_BUDGET_BYTES` 和 `prepareMessages` 回调。先计量，超过目标才调用 `selectInput`。本篇用 4,096 字节让示例在同一次运行中出现全量和选择两种路径；这个数没有从提供商窗口推导。
 
-<<< @/snippets/20-input-budget/apps/coding-cli/src/session/run.ts
+在导入区加入 `import { messageBytes, selectInput } from '../context/select-input';`。在 `runSession` 前定义 `const MESSAGE_BUDGET_BYTES = 4_096;`。接着在传给 `runAgent` 的配置对象里，于 `callModel,` 下一行插入：
+
+```ts
+    // 【新增】每轮发请求前，由应用自行判断是否需要选择。
+    prepareMessages: (history, signal) => {
+      signal.throwIfAborted();
+      const historyBytes = messageBytes(history);
+      const selected = historyBytes > MESSAGE_BUDGET_BYTES
+        ? selectInput(history, MESSAGE_BUDGET_BYTES)
+        : history;
+      const selectedBytes = messageBytes(selected);
+      console.log('输入选择', {
+        historyBytes,
+        inputBytes: selectedBytes,
+        budget: MESSAGE_BUDGET_BYTES,
+        omittedMessages: history.length - selected.length,
+        overBudget: selectedBytes > MESSAGE_BUDGET_BYTES,
+      });
+      return selected;
+    },
+```
 
 参数解析、任务配置类型和 CLI 入口继续沿用第 19 篇。如果你已经按旧版教程接入了手动字节参数，请从 `config/args.ts`、`types/task.ts` 和 `main.ts` 移除对应的解析、类型字段和参数传递；保留其他本地改动。
 
 ![输入选择与运行历史的边界](/diagrams/20-input-boundary.svg)
 
 `historyBytes` 和 `inputBytes` 分别是选择前后的本轮消息规模；`omittedMessages` 不是删除的历史条数。真正的工具结果仍由 Runtime 保存，CLI 接受与否仍由当前内容对应的验收决定。
+
+::: details 完整文件 apps/coding-cli/src/session/run.ts
+<<< @/snippets/20-input-budget/apps/coding-cli/src/session/run.ts
+:::
 
 ## 第三步：观察同一任务何时自动切换
 

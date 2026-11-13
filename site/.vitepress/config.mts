@@ -51,6 +51,7 @@ export default defineConfig({
         { text: '24 把已验收的经验留给下一个任务', link: '/guide/24-memory-writeback' },
         { text: '25 让 Coding Agent 退出后仍能查到会话', link: '/guide/25-session-log' },
         { text: '26 退出后继续追问上一场任务', link: '/guide/26-resume-conversation' },
+        { text: '27 改完文件后，重启接着验收', link: '/guide/27-checkpoint' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },

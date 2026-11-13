@@ -4,6 +4,7 @@ import type { ModelCall, RunEventListener } from '@ai-harness/runtime';
 import { parseArgs, helpText } from './config/args';
 import { loadTask } from './config/task';
 import { createModelCall } from './model';
+import { resumePendingCheck, savePendingCheck } from './session/checkpoint';
 import { prepareSession } from './session/prepare';
 import { appendRun, createSessionLog } from './session/session-log';
 import { resumeConversation } from './session/resume-conversation';
@@ -55,6 +56,13 @@ export async function runCli(
 
     phase = '任务配置';
     const task = await loadTask(options.taskFile, controller.signal);
+
+    if (options.resumeCheck) {
+      phase = '检查点恢复';
+      const result = await resumePendingCheck(options.resumeCheck, task, controller.signal);
+      printBlock('恢复验收', result);
+      return result.passed ? 0 : 1;
+    }
 
     phase = '模型配置';
     const callModel = createCallModel();
@@ -110,6 +118,13 @@ export async function runCli(
         await appendRun(logPath, result, first.messages.length);
         phase = '运行与报告';
       }
+    }
+
+    if (options.checkpoint) {
+      phase = '保存检查点';
+      await savePendingCheck(options.checkpoint, task, session, result, controller.signal);
+      printBlock('检查点已保存', options.checkpoint);
+      return 0;
     }
 
     return await reportSession(task, session, result);

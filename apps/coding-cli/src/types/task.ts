@@ -28,6 +28,10 @@ export type CliOptions =
       taskFile: string;
       /** 【新增】操作者指定的新会话记录文件，省略时只保留终端报告。 */
       sessionLog?: string;
+      /** 受控交接时写入的新检查点路径。 */
+      checkpoint?: string;
+      /** 从此检查点对旧副本执行一次验收。 */
+      resumeCheck?: string;
       /** 是否为本次运行提供 update_plan 工具，由 --plan 启用，默认关闭。 */
       planning: boolean;
       /** 第一段正常回答后提交的一条追问，省略时只运行一段。 */

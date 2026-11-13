@@ -16,6 +16,10 @@
 2. 第一段修复并验收，Runtime 返回 11 条历史。CLI 把这 11 条连同运行 ID、停止状态一起写入第二行，再开始追问。
 3. 追问结束，Runtime 返回 13 条累计历史。前 11 条已经保存，CLI 只追加用户追问和模型回答。退出后，用另一个进程读取这三行。
 
+### 实现架构图
+
+![两个运行段怎样写入同一个会话文件](/diagrams/25-implementation-architecture.svg)
+
 每行各自是一份 JSON，这种格式叫 JSONL。验收时找三个数字：版本 `1`、首段新增 `11` 条、追问段新增 `2` 条。交付仍看实际验收。日志含任务和工具反馈原文，选择本地私有目录保存。本篇只在运行段返回后写盘，段内突然退出时，磁盘上只有此前已写的记录。
 
 ### 先看一行怎样落盘
@@ -69,7 +73,11 @@ git switch -c agent/chapter-25-session-log
 
 ## 第一步：一行保存一段运行
 
-新建 `apps/coding-cli/src/session/session-log.ts`。它负责两件事：任务开始时创建日志，Runtime 每返回一段结果时追加一条记录。先看下面的三个摘录，读完再展开完整文件一次写入。
+新建 `apps/coding-cli/src/session/session-log.ts`。它负责两件事：任务开始时创建日志，Runtime 每返回一段结果时追加一条记录。先展开完整实现一次写入，再跟着三个小节读代码。
+
+::: details 完整实现 session/session-log.ts
+<<< @/snippets/25-session-log/apps/coding-cli/src/session/session-log.ts
+:::
 
 ### 1.1 首行记录这是谁的会话
 
@@ -124,10 +132,6 @@ git switch -c agent/chapter-25-session-log
 
 **读到这里可以先停一下。** 如果追问段改成传 `start = 0`，第二条运行记录会写入 13 条消息，其中前 11 条会重复。这就是第三步传入首段长度的原因。
 
-::: details 完整实现 session/session-log.ts
-<<< @/snippets/25-session-log/apps/coding-cli/src/session/session-log.ts
-:::
-
 ## 第二步：让终端能指定日志位置
 
 打开 `apps/coding-cli/src/types/task.ts`，在 `CliOptions` 有 `taskFile` 的分支里，在 `followUp?: string;` 下方追加：
@@ -136,6 +140,10 @@ git switch -c agent/chapter-25-session-log
       /** 【新增】操作者指定的新会话记录文件，省略时只保留终端报告。 */
       sessionLog?: string;
 ```
+
+::: details 完整文件 types/task.ts
+<<< @/snippets/25-session-log/apps/coding-cli/src/types/task.ts
+:::
 
 打开 `apps/coding-cli/src/config/args.ts`，在 `parseArgs` 的 `let followUp` 下方加 `let sessionLog: string | undefined;`。在参数循环里，找到以 `} else if (arg === '--task'` 开头的整行，在它正上方插入以下代码。
 
@@ -158,10 +166,6 @@ git switch -c agent/chapter-25-session-log
 参数分支把路径存进局部变量，这一行才把路径交给 `runCli`。漏写时，修复任务仍可能正常验收，但 `options.sessionLog` 是 `undefined`，CLI 会跳过写入。最后在 `helpText` 的用法行追加 `[--session-log <文件>]`，在 `--help` 之前说明它保存到一个新文件。
 
 ![终端参数经 parseArgs 传给 runCli](/diagrams/25-session-args.svg)
-
-::: details 完整文件 types/task.ts
-<<< @/snippets/25-session-log/apps/coding-cli/src/types/task.ts
-:::
 
 ::: details 完整文件 config/args.ts
 <<< @/snippets/25-session-log/apps/coding-cli/src/config/args.ts

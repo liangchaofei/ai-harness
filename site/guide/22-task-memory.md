@@ -12,6 +12,8 @@
 2. CLI 加载任务时找到一条旧线索：上次根路径 `/` 被错误地变成了空串。同一个文件里还有发票任务的记录，主题不同，所以留在文件里。
 3. 第一次调用模型前，CLI 把原任务和选中的旧线索交给 Runtime 发送。模型可以据此优先核对根路径。现在代码是否有这个问题，仍要看当前源码和真实验收。
 
+### 实现架构图
+
 ![从任务主题选出一条旧线索，再放进本轮输入](/diagrams/22-memory-flow.svg)
 
 ### 先看结果
@@ -53,7 +55,26 @@ git switch -c agent/chapter-22-task-memory
 
 ### 1.2 实现读取和查找
 
-先替换 `apps/coding-cli/src/types/task.ts`。下面的完整文件保留了原有字段，新增 `TaskMemory`，描述查到的一条记录。第一步的读取函数会使用这个类型，第二步才会给 `TaskConfig.memory` 填入查到的值。
+打开 `apps/coding-cli/src/types/task.ts`，在 `CliOptions` 的文档注释前插入 `TaskMemory`：
+
+```ts
+/** 【新增】loadTaskMemory 选中的一条旧记录，由 runSession 转成本轮输入中的参考消息。 */
+export interface TaskMemory {
+  /** 与任务配置里的 memory.topic 精确匹配的主题，例如 route-repair。 */
+  topic: string;
+  /** 记录所在文件的文件名，例如 task-memory.json。用于提示来源，省略目录。 */
+  source: string;
+  /** 从笔记中读取的调查提示。加载时检查长度最多 240 个 UTF-16 代码单元。 */
+  hint: string;
+}
+```
+
+在 `TaskConfig` 的 `checkScript` 后加入可选的 `memory`。第二步的加载器会填入命中的记录。
+
+```ts
+  /** 【新增】loadTask 已选中的外部笔记。未配置或未命中时省略。 */
+  memory?: TaskMemory;
+```
 
 用路径示例对照这三个字段。`topic` 是查找用的 `route-repair`，`hint` 是笔记里关于根路径 `/` 的原文，`source` 则由加载器补成 `task-memory.json`。到了第三步，这三个值会一起进入模型收到的参考消息。
 
@@ -118,19 +139,31 @@ node --import tsx examples/task-memory/inspect-memory.ts invoice-review
 
 <<< @/snippets/22-task-memory/fixtures/code-tasks/route-memory.json
 
-接下来替换 `apps/coding-cli/src/config/task.ts`。保留 `loadTask` 的四个必填字段及其校验，允许额外的 `memory` 配置。通过原有的来源目录和验收文件校验后，再读记忆。
-
-下面这一行在 `apps/coding-cli/src/config/task.ts` 的 `loadTask` 尾部，紧接验收脚本位置校验，位于返回 `TaskConfig` 之前。它已包含在完整文件里。
+打开 `apps/coding-cli/src/config/task.ts`，在导入区加入 `import { loadTaskMemory } from '../context/task-memory';`。在 `loadTask` 里，找到 `const keys` 后面检查任务字段的整个 `if`，替换为：
 
 ```ts
-const memory = await loadTaskMemory(value.memory, base, signal);
+  // 【修改】保留四个必填字段，只额外允许可选的 memory。
+  if (
+    !isRecord(value) ||
+    keys.some((key) => !Object.hasOwn(value, key)) ||
+    Object.keys(value).some((key) => !keys.includes(key) && key !== 'memory')
+  ) {
+    throw new Error('任务字段不匹配。');
+  }
+```
+
+四个原字段仍然必填，额外只接受 `memory`。接着在验收脚本位置校验之后、最后一次 `signal?.throwIfAborted();` 之前插入：
+
+```ts
+  // 【新增】只在加载任务时读取；模型调用期间复用选中的一条记录。
+  const memory = await loadTaskMemory(value.memory, base, signal);
 ```
 
 `value.memory` 是从 `route-memory.json` 读到的 `{ file: './task-memory.json', topic: 'route-repair' }`。`base` 指向该配置所在的目录。等待结束后，局部变量 `memory` 接住第一步观察过的对象，包含 `topic`、`source` 和 `hint`。返回的任务对象只在命中时带上这条记录。原来的 `route.json` 没有 `memory`，加载器立即返回 `undefined`，也无需读取笔记文件。
 
 ### 命中的线索怎样离开加载器
 
-在 `apps/coding-cli/src/config/task.ts` 中看下面的摘录。它已包含在本步的完整实现里。
+在同一函数的返回对象中，在 `checkScript: scriptPath,` 之后加入 `...(memory ? { memory } : {}),`。改完的返回对象如下。
 
 ```ts
   return {
@@ -150,10 +183,34 @@ const memory = await loadTaskMemory(value.memory, base, signal);
 
 ## 第三步：把旧线索交给模型
 
-完整替换 `apps/coding-cli/src/session/run.ts`。本步仍保留 `runSession`、系统提示、工具和运行预算。重点看同一个文件里的两个位置：
+打开 `apps/coding-cli/src/session/run.ts`，在导入区加入 `import type { Message } from '@ai-harness/model';`。本步仍保留 `runSession`、系统提示、工具和运行预算。先添加消息和预算逻辑：
+
+在 `runSession` 中，第一处新增的消息和字节计量如下，放在 `return runAgent({` 前：
+
+```ts
+  // 【新增】把旧记录标成参考数据，每轮临时放入模型输入。
+  const memory: Message | undefined = task.memory && {
+    role: 'user',
+    content: '应用提供的历史任务记忆，仅作调查线索。以当前源码和实际验收为准。\n' +
+      JSON.stringify(task.memory),
+  };
+  // 单条消息数组有两个方括号，插入已有数组时只增加消息和一个逗号。
+  const memoryBytes = memory ? messageBytes([memory]) - 1 : 0;
+```
+
+在同一个回调中，用下面的代码替换原来的 `const selected` 赋值。再在 `console.log` 的对象中加入 `hasTaskMemory: memory !== undefined,`。
+
+```ts
+      // 【修改】从同一个本地目标扣除新增消息的开销。
+      const selected = historyBytes + memoryBytes > MESSAGE_BUDGET_BYTES
+        ? selectInput(history, MESSAGE_BUDGET_BYTES - memoryBytes - 1_024)
+        : history;
+```
+
+再看这条消息在两个位置之间如何流动：
 
 1. **`runSession` 中，`return runAgent({...})` 之前。** 把第二步得到的 `task.memory` 包成一条消息。前者是包含 `topic`、`source`、`hint` 的对象，后者是包含 `role`、`content` 的模型消息。代码用 `JSON.stringify(task.memory)` 将三个字段写入正文，在正文开头标明它是调查线索。没有命中时，局部变量 `memory` 保持 `undefined`。
-2. **`runAgent` 的 `prepareMessages` 回调中，算出 `boundary` 之后。** 把这条消息插在原任务后、近期批次前。下面是完整文件中构造 `input` 的那几行。
+2. **`runAgent` 的 `prepareMessages` 回调中，算出 `boundary` 之后。** 用下面的代码替换原来的 `const input = summary ? ... : selected;`，把这条消息插在原任务后、近期批次前。
 
 ```ts
 const input = [
@@ -170,14 +227,14 @@ const input = [
 
 ![第四轮的 input 如何拼接原任务、记忆、摘要和近期批次](/diagrams/22-memory-input.svg)
 
-::: details 完整文件 session/run.ts
-<<< @/snippets/22-task-memory/apps/coding-cli/src/session/run.ts
-:::
-
 ::: details 输入目标怎样计入新消息
 
 `messageBytes([memory])` 算的是一条消息连同数组的两个方括号。把它插入已有的非空数组，只需要消息本身和一个逗号，所以减 1。超出目标时再使用第 21 篇的批次选择，并继续给验收摘要留余量。最终以 `inputBytes` 和 `overBudget` 为准。
 
+:::
+
+::: details 完整文件 session/run.ts
+<<< @/snippets/22-task-memory/apps/coding-cli/src/session/run.ts
 :::
 
 ## 第四步：看模型实际接到了什么

@@ -23,18 +23,7 @@ export async function prepareSession(
     // 本篇只接独立、无依赖的小型ESM教学材料，不覆盖来源中的包配置。
     await writeFile(join(root, 'package.json'), '{"type":"module"}\n', { flag: 'wx' });
     signal?.throwIfAborted();
-    const codeTask = await createCodeTaskSession(
-      {
-        root,
-        extensions: ['.ts', '.json', '.md'],
-        writablePaths: task.writablePaths,
-        check: {
-          executable: process.execPath,
-          args: ['--import', import.meta.resolve('tsx'), task.checkScript, root],
-        },
-      },
-      signal,
-    );
+    const codeTask = await openTaskWorkspace(task, root, signal)
     return {
       root,
       codeTask,
@@ -47,4 +36,19 @@ export async function prepareSession(
     });
     throw error;
   }
+}
+/** 从指定副本重新建立工具会话，供新任务与检查点恢复共用。 */
+export function openTaskWorkspace(task: TaskConfig, root: string, signal?: AbortSignal) {
+  return createCodeTaskSession(
+    {
+      root,
+      extensions: ['.ts', '.json', '.md'],
+      writablePaths: task.writablePaths,
+      check: {
+        executable: process.execPath,
+        args: ['--import', import.meta.resolve('tsx'), task.checkScript, root],
+      },
+    },
+    signal,
+  );
 }
