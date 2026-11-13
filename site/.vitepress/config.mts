@@ -48,6 +48,7 @@ export default defineConfig({
         { text: '21 把被省略的验收证据带回本轮输入', link: '/guide/21-evidence-summary' },
         { text: '22 从旧任务取回一条有用的线索', link: '/guide/22-task-memory' },
         { text: '23 在同一个任务里继续追问', link: '/guide/23-task-follow-up' },
+        { text: '24 把已验收的经验留给下一个任务', link: '/guide/24-memory-writeback' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },

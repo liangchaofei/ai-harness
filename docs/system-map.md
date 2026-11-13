@@ -65,3 +65,5 @@ model定义模型输入输出契约，适配器认识服务协议；Runtime创�
 第 22 篇候选：任务配置 → 外部记忆文件 → CLI 按主题选一条记录 → prepareMessages 临时注入；当前验收和运行历史保持各自来源。
 
 第 23 篇候选：CLI 准备一次会话，首段 Runtime 返回完整历史，CLI 追加一条用户追问后开启第二段运行。裁剪保留追问，报告复用当前会话验收。
+
+第 24 篇候选：inspect → acceptTask → saveAcceptedMemory → 按主题维护笔记 → 下次 loadTaskMemory。记忆写入状态独立于当前交付。

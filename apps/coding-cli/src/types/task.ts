@@ -21,9 +21,31 @@ export type CliOptions =
       taskFile: string;
       /** 是否为本次运行提供 update_plan 工具，由 --plan 启用，默认关闭。 */
       planning: boolean;
-      /** 【新增】第一段正常回答后提交的一条追问，省略时只运行一段。 */
+      /** 第一段正常回答后提交的一条追问，省略时只运行一段。 */
       followUp?: string;
     };
+
+/** 【新增】磁盘上的一条笔记。写入时保留已有的附加字段。 */
+export interface MemoryNote {
+  /** 同一文件内用于查找与更新的键。 */
+  topic: string;
+  /** 选中后提供给模型的调查线索。 */
+  hint: string;
+  /** 操作者设为 false 后停止检索和自动更新。 */
+  enabled?: unknown;
+  /** 保留来源等附加字段，由各自的写入方解释。 */
+  [key: string]: unknown;
+}
+
+/** 【新增】操作者为本任务授权的写入范围，由 loadTask 解析后交给报告层。 */
+export interface MemoryCapture {
+  /** 已存在的笔记文件的绝对路径。 */
+  path: string;
+  /** 文件内唯一的主题，同时作为更新时的键。 */
+  topic: string;
+  /** 从最终验收中提取的用例输入，例如根路径 /。 */
+  caseInput: string;
+}
 
 /** loadTask创建；相对路径已按任务文件所在目录解析为真实绝对路径。 */
 export interface TaskConfig {
@@ -37,9 +59,11 @@ export interface TaskConfig {
   checkScript: string;
   /** loadTask 已选中的外部笔记。未配置或未命中时省略。 */
   memory?: TaskMemory;
+  /** 【新增】有此配置才在交付后尝试保存验收线索。 */
+  memoryCapture?: MemoryCapture;
 }
 
-/** 【新增】应用给单段运行的输入选项。正常 CLI 使用默认输入策略。 */
+/** 应用给单段运行的输入选项。正常 CLI 使用默认输入策略。 */
 export interface RunInputOptions {
   /** 第二段的完整起点，含上一段历史和本次追问。省略时从原任务开始。 */
   messages?: readonly Message[];
