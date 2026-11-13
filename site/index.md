@@ -71,3 +71,5 @@ features:
 [第 28 篇：验收中断后，先确认结果再决定是否重跑](/guide/28-check-receipt)用完成回执处理重复提交。
 
 [第 29 篇：验收进程中断后，怎样核对现场](/guide/29-interrupted-check)观察进程中断与磁盘证据。
+
+[第 30 篇：在正式 CLI 里检查恢复证据](/guide/30-inspect-checkpoint)用只读诊断收拢第五阶段。

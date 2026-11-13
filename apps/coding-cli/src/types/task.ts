@@ -32,6 +32,8 @@ export type CliOptions =
       checkpoint?: string;
       /** 从此检查点对旧副本执行一次验收。 */
       resumeCheck?: string;
+      /** 检查指定检查点的证据，不执行验收。 */
+      inspectCheck?: string;
       /** 是否为本次运行提供 update_plan 工具，由 --plan 启用，默认关闭。 */
       planning: boolean;
       /** 第一段正常回答后提交的一条追问，省略时只运行一段。 */

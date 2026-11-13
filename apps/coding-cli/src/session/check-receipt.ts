@@ -1,5 +1,5 @@
 // 【新增文件】区分尚未占用、已有结果和结果不明。
-import { readFile, writeFile } from 'node:fs/promises';
+import { lstat, readFile, writeFile } from 'node:fs/promises';
 
 /** 已完成的验收写入此回执，恢复入口据此展示结果。 */
 export interface CheckReceipt {
@@ -13,6 +13,12 @@ export interface CheckReceipt {
 
 /** 有匹配回执就返回它。独占成功时返回 undefined，调用方可以启动验收。 */
 export async function claimCheck(path: string, checkpointKey: string): Promise<CheckReceipt | undefined> {
+  const observed = await inspectCheckReceipt(path, checkpointKey);
+  if (observed.status === 'completed') return observed.receipt;
+  if (observed.status === 'unknown') {
+    throw new Error('验收结果不明，请核对现场。');
+  }
+
   try {
     await writeFile(path + '.started', '', { flag: 'wx', mode: 0o600 });
     return undefined;
@@ -22,7 +28,37 @@ export async function claimCheck(path: string, checkpointKey: string): Promise<C
     }
   }
 
-  // 已占用时，只读取完成证据。缺失、损坏或不匹配都保持结果不明。
+  const state = await inspectCheckReceipt(path, checkpointKey);
+  if (state.status === 'completed') {
+    return state.receipt;
+  }
+  throw new Error('验收已占用，但没有匹配的完成回执。结果不明，请核对现场。');
+}
+
+/** 读取时看到的证据。pending 只是观察结果，执行前仍须独占创建。 */
+export type CheckReceiptState =
+  | { status: 'pending' }
+  | { status: 'completed'; receipt: CheckReceipt }
+  | { status: 'unknown' };
+
+async function hasEntry(path: string): Promise<boolean> {
+  try {
+    await lstat(path);
+    return true;
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      return false;
+    }
+    throw error;
+  }
+}
+
+/** 检查当前证据，不创建占用标记。 */
+export async function inspectCheckReceipt(path: string, checkpointKey: string): Promise<CheckReceiptState> {
+  if (!await hasEntry(path + '.started')) {
+    return { status: await hasEntry(path + '.done') ? 'unknown' : 'pending' };
+  }
+
   const receipt: unknown = await readFile(path + '.done', 'utf8')
     .then((text) => JSON.parse(text))
     .catch(() => undefined);
@@ -32,10 +68,10 @@ export async function claimCheck(path: string, checkpointKey: string): Promise<C
     'passed' in receipt && typeof receipt.passed === 'boolean' &&
     'feedback' in receipt && typeof receipt.feedback === 'string'
   ) {
-    return { checkpointKey, passed: receipt.passed, feedback: receipt.feedback };
+    return { status: 'completed', receipt: { checkpointKey, passed: receipt.passed, feedback: receipt.feedback } };
   }
 
-  throw new Error('验收已占用，但没有匹配的完成回执。结果不明，请核对现场。');
+  return { status: 'unknown' };
 }
 
 /** 验收及取证结束后，独占写入一次完成回执。 */
