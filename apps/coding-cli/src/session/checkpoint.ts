@@ -1,10 +1,11 @@
-// 【新增文件】保存并接续一个明确等待验收的工作副本。
+//保存并接续一个明确等待验收的工作副本。
 import { createHash } from 'node:crypto';
 import { readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import { isAbsolute, resolve } from 'node:path';
 import type { RunResult } from '@ai-harness/runtime';
 import type { CliSession } from '../types/session';
 import type { TaskConfig } from '../types/task';
+import { claimCheck, saveCheckReceipt } from './check-receipt';
 import { openTaskWorkspace } from './prepare';
 
 /** 写入方创建，恢复方校验。记录一次待执行的验收及其适用内容。 */
@@ -92,14 +93,20 @@ export async function resumePendingCheck(path: string, task: TaskConfig, signal?
   const check = session.tools.find((tool) => tool.name === 'run_check');
   if (!check) throw new Error('当前任务缺少验收工具。');
 
-  // 先占用再执行。若中途退出，保留标记以拒绝自动重跑。
+  // 【修改】已有匹配回执时复用结果；已占用且无回执时由 claimCheck 拒绝继续。
   signal?.throwIfAborted();
-  await writeFile(checkpointPath + '.started', '', { flag: 'wx', mode: 0o600 });
+  const checkpointKey = createHash('sha256').update(text).digest('hex');
+  const receipt = await claimCheck(checkpointPath, checkpointKey);
+  if (receipt) {
+    return { workspace: entry.workspace, passed: receipt.passed, feedback: receipt.feedback, reused: true };
+  }
   const feedback = await check.execute({}, signal);
   const after = await session.inspect(signal);
   const report: unknown = JSON.parse(after.lastCheck?.stdout ?? 'null');
   const passed = after.checkMatchesCurrent && after.currentRevision === entry.revision &&
     after.lastCheck?.status === 'passed' && after.lastCheck.exitCode === 0 &&
     typeof report === 'object' && report !== null && 'passed' in report && report.passed === true;
-  return { workspace: entry.workspace, passed, feedback };
+  // 【新增】先写回执，再向调用方返回结果。
+  await saveCheckReceipt(checkpointPath, { checkpointKey, passed, feedback });
+  return { workspace: entry.workspace, passed, feedback, reused: false };
 }

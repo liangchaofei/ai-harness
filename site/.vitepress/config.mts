@@ -49,9 +49,12 @@ export default defineConfig({
         { text: '22 从旧任务取回一条有用的线索', link: '/guide/22-task-memory' },
         { text: '23 在同一个任务里继续追问', link: '/guide/23-task-follow-up' },
         { text: '24 把已验收的经验留给下一个任务', link: '/guide/24-memory-writeback' },
+      ] },
+      { text: '第五阶段 · 可靠执行与恢复', items: [
         { text: '25 让 Coding Agent 退出后仍能查到会话', link: '/guide/25-session-log' },
         { text: '26 退出后继续追问上一场任务', link: '/guide/26-resume-conversation' },
         { text: '27 改完文件后，重启接着验收', link: '/guide/27-checkpoint' },
+        { text: '28 验收中断后，先确认结果再决定是否重跑', link: '/guide/28-check-receipt' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },

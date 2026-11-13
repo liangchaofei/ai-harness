@@ -67,3 +67,5 @@ features:
 [第 26 篇：退出后继续追问上一场任务](/guide/26-resume-conversation)从会话日志重建输入。
 
 [第 27 篇：改完文件后，重启接着验收](/guide/27-checkpoint)用检查点接续实际验收。
+
+[第 28 篇：验收中断后，先确认结果再决定是否重跑](/guide/28-check-receipt)用完成回执处理重复提交。
