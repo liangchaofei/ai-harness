@@ -79,3 +79,5 @@ features:
 [第 32 篇：在修改和验收前逐次询问操作者](/guide/32-tool-approval)在实际动作之前请求一次批准。
 
 [第 33 篇：让验收等待跨进程批准](/guide/33-check-approval)保存对一次具体验收的决定，另起进程继续。
+
+[第 34 篇：给 Coding Agent 接入双文件调查工具](/guide/34-source-pair)用发票任务验证可选工具、工作区约束和现有交付流程。

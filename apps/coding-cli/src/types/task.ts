@@ -33,9 +33,9 @@ export type CliOptions =
       sessionLog?: string;
       /** 受控交接时写入的新检查点路径。 */
       checkpoint?: string;
-      /** 【新增】创建检查点时将验收留给单独批准后的恢复进程。 */
+      /** 创建检查点时将验收留给单独批准后的恢复进程。 */
       gateCheck?: boolean;
-      /** 【新增】仅记录对指定检查点的决定。 */
+      /** 仅记录对指定检查点的决定。 */
       decideCheck?: { path: string; decision: CheckDecision };
       /** 从此检查点对旧副本执行一次验收。 */
       resumeCheck?: string;
@@ -83,6 +83,8 @@ export interface TaskConfig {
   writablePaths: string[];
   /** 副本之外的可信.mjs验收；命令固定为当前Node加tsx和此脚本。 */
   checkScript: string;
+  /** 【新增】操作者选择的内置扩展。省略时仅使用原工具。 */
+  extension?: 'source-pair';
   /** loadTask 已选中的外部笔记。未配置或未命中时省略。 */
   memory?: TaskMemory;
   /** 有此配置才在交付后尝试保存验收线索。 */
@@ -99,6 +101,6 @@ export interface RunInputOptions {
   readOnly?: boolean;
   /** 本段在修改与验收前等待一次终端批准。 */
   approveTools?: boolean;
-  /** 【新增】本段只准备改动，run_check 留给检查点恢复入口。 */
+  /** 本段只准备改动，run_check 留给检查点恢复入口。 */
   deferCheck?: boolean;
 }

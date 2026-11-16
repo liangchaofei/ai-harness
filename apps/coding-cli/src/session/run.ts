@@ -5,6 +5,7 @@ import {
   type RunEventListener,
   type RunResult,
 } from '@ai-harness/runtime';
+import { createSourcePairTool } from '../extensions/source-pair';
 import { requireToolApproval } from './approve-tools';
 import { restrictToReadOnly } from './read-only-tools';
 import type { Message } from '@ai-harness/model';
@@ -37,11 +38,20 @@ export function runSession(
   // 单条消息数组有两个方括号，插入已有数组时只增加消息和一个逗号。
   const memoryBytes = memory ? messageBytes([memory]) - 1 : 0;
 
-  const tools = session.plan
-    ? [...session.codeTask.tools, session.plan.tool]
-    : session.codeTask.tools;
+  // 【修改】在应用层装配扩展，之后仍走同一份工具策略和 Runtime 调用。
+  const tools = [...session.codeTask.tools];
+  if (session.plan) {
+    tools.push(session.plan.tool);
+  }
+  if (task.extension === 'source-pair') {
+    const read = tools.find((tool) => tool.name === 'read_file');
+    if (!read) {
+      throw new Error('双文件调查扩展需要工作区读取工具。');
+    }
+    tools.push(createSourcePairTool(read.execute));
+  }
 
-  // 【新增】等待跨进程批准的任务，首段拿不到实际验收工具。
+  // 等待跨进程批准的任务，首段拿不到实际验收工具。
   const availableTools = inputOptions.deferCheck
     ? tools.filter((tool) => tool.name !== 'run_check')
     : tools;
