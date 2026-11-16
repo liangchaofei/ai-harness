@@ -20,7 +20,7 @@ export type CliOptions =
   | { help: true }
   | {
       help: false;
-      /** 【新增】两份只读评估报告的路径，顺序决定差值方向。 */
+      /** 两份只读评估报告的路径，顺序决定差值方向。 */
       compareEval: { baseline: string; candidate: string };
     }
   | {
@@ -105,8 +105,8 @@ export interface TaskConfig {
   checkScript: string;
   /** 仅约束验收子进程的写入和网络。省略时沿用本地执行。 */
   checkIsolation?: 'macos-offline-readonly';
-  /** 操作者选择的扩展。省略时仅使用原工具。 */
-  extension?: 'source-pair' | 'invoice-policy-mcp';
+  /** 【修改】操作者选择的扩展。entry-review 启用有限的只读委派，省略时沿用原工具。 */
+  extension?: 'source-pair' | 'invoice-policy-mcp' | 'entry-review';
   /** loadTask 已选中的外部笔记。未配置或未命中时省略。 */
   memory?: TaskMemory;
   /** 有此配置才在交付后尝试保存验收线索。 */

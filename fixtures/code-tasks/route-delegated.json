@@ -1,0 +1,7 @@
+{
+  "source": "../route-repair",
+  "prompt": "从 src/main.ts 调查 normalizePath。如果需要，可把入口调查委派给只读子运行，并用 read_file 核对其线索。按 README 修复当前实现，只修改获准文件，执行实际验收并说明结果。",
+  "writablePaths": ["src/routing/normalize.ts"],
+  "checkScript": "./check-route.mjs",
+  "extension": "entry-review"
+}
