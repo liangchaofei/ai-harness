@@ -1,5 +1,4 @@
 // 把已准备的任务接到现有Runtime，不再实现一套循环。
-import { runAgent } from '@ai-harness/harness';
 import {
   type ModelCall,
   type RunEventListener,
@@ -72,7 +71,8 @@ export function runSession(
     ? ' 本段只准备改动，验收将在操作者批准后另行执行。最后说明变化和待验收事项。'
     : ' run_check运行固定验收，依据真实反馈修正或说明限制。最后说明变化和验收结果。';
 
-  return runAgent({
+  // 【修改】仍由 CLI 组装工具策略，准备好的 runner 执行本段。
+  return session.runner.run({
     // 第二段复用上一段的完整历史，并从追加的追问继续。
     messages: inputOptions.messages ?? [
       {
