@@ -1,4 +1,4 @@
-// 【新增文件】主进程运行已登记的任务，返回有限的交付摘要。
+// 主进程运行已登记的任务，返回有限的交付摘要。
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
@@ -59,6 +59,11 @@ export async function runDesktopTask(
         review.lastCheck.exitCode === 0,
       accepted,
       changedFiles: review.changes.map(({ path }) => path),
+      // 【新增】复制可审阅证据，随后 finally 仍清理工作副本。
+      changes: review.changes.map(({ path, before, after }) => ({ path, before, after })),
+      check: review.lastCheck
+        ? { status: review.lastCheck.status, exitCode: review.lastCheck.exitCode }
+        : null,
     };
   } finally {
     await rm(root, { recursive: true, force: true });

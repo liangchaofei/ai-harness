@@ -9,7 +9,8 @@
     "start": "electron ."
   },
   "dependencies": {
-    "@ai-harness/harness": "0.1.0"
+    "@ai-harness/harness": "0.1.0",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "electron": "45.3.3"

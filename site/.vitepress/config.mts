@@ -80,6 +80,7 @@ export default defineConfig({
         { text: '45 让 CLI 和独立宿主共用任务运行器', link: '/guide/45-task-runner' },
         { text: '46 让桌面窗口运行和取消同一个代码任务', link: '/guide/46-desktop-host' },
         { text: '47 在桌面选择任务，并接入已配置的模型', link: '/guide/47-desktop-task-model' },
+        { text: '48 保存桌面运行历史，重开后审阅改动', link: '/guide/48-desktop-history' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },

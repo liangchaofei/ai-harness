@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; base-uri 'none'; frame-src 'none'; form-action 'none'">
+  <title>AI Harness</title>
+  <link rel="stylesheet" href="./style.css">
+  <script defer src="./renderer.js"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="brand">AI Harness</p>
+      <h1>代码任务</h1>
+      <div class="settings">
+        <label for="task-id">任务
+          <select id="task-id">
+            <option value="total">修复总价计算</option>
+            <option value="route">修复路径规范化</option>
+          </select>
+        </label>
+        <label for="model-mode">模型
+          <select id="model-mode">
+            <option value="fixed">固定响应</option>
+            <option value="live">已配置的模型服务</option>
+          </select>
+        </label>
+      </div>
+      <p id="model-note" hidden>运行任务将调用你配置的模型服务。</p>
+      <div class="actions">
+        <button id="start" type="button">运行任务</button>
+        <button id="cancel" type="button" disabled>取消</button>
+      </div>
+    </header>
+    <div class="panels">
+      <section aria-labelledby="progress-heading">
+        <h2 id="progress-heading">运行记录</h2>
+        <ol id="progress" aria-live="polite"></ol>
+      </section>
+      <section aria-labelledby="result-heading">
+        <h2 id="result-heading">交付结果</h2>
+        <p id="status" role="status">等待运行</p>
+        <dl>
+          <dt>改动文件</dt><dd id="changes">—</dd>
+          <dt>匹配当前内容的验收</dt><dd id="check">—</dd>
+        </dl>
+      </section>
+    </div>
+    <section class="history" aria-labelledby="history-heading">
+      <div class="history-heading">
+        <h2 id="history-heading">运行历史</h2>
+        <label for="history-id">查看记录
+          <select id="history-id" disabled></select>
+        </label>
+      </div>
+      <p id="history-status" role="status">正在读取历史</p>
+      <p id="history-check-detail" hidden></p>
+      <ol id="history-progress"></ol>
+      <div id="history-diff"></div>
+    </section>
+  </main>
+</body>
+</html>
