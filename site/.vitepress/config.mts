@@ -68,6 +68,7 @@ export default defineConfig({
       ] },
       { text: '第七阶段 · 评估、调试与任务编排', items: [
         { text: '37 用结构化轨迹定位工具为什么没执行', link: '/guide/37-run-trace' },
+        { text: '38 离线诊断一份 Agent 运行轨迹', link: '/guide/38-inspect-trace' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },
