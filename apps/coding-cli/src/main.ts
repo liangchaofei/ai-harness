@@ -4,7 +4,7 @@ import type { ModelCall, RunEventListener } from '@ai-harness/runtime';
 import { parseArgs, helpText } from './config/args';
 import { loadTask } from './config/task';
 import { createModelCall } from './model';
-import { inspectPendingCheck, resumePendingCheck, savePendingCheck } from './session/checkpoint';
+import { decidePendingCheck, inspectPendingCheck, resumePendingCheck, savePendingCheck } from './session/checkpoint';
 import { prepareSession } from './session/prepare';
 import { appendRun, createSessionLog } from './session/session-log';
 import { resumeConversation } from './session/resume-conversation';
@@ -37,7 +37,7 @@ export async function runCli(
       return 0;
     }
 
-    // 【新增】只读接续先于任务配置和副本准备分流。
+    // 只读接续先于任务配置和副本准备分流。
     if ('resumeLog' in options) {
       phase = '会话接续';
       const result = await resumeConversation(
@@ -57,6 +57,15 @@ export async function runCli(
     phase = '任务配置';
     const task = await loadTask(options.taskFile, controller.signal);
 
+    // 【新增】批准命令只保存决定，之后由独立的恢复调用执行。
+    if (options.decideCheck) {
+      phase = '记录验收决定';
+      const { path, decision } = options.decideCheck;
+      const report = await decidePendingCheck(path, task, decision, controller.signal);
+      printBlock('验收决定', report);
+      return 0;
+    }
+
     if (options.inspectCheck) {
       phase = '检查点诊断';
       const report = await inspectPendingCheck(options.inspectCheck, task, controller.signal);
@@ -67,6 +76,10 @@ export async function runCli(
     if (options.resumeCheck) {
       phase = '检查点恢复';
       const result = await resumePendingCheck(options.resumeCheck, task, controller.signal);
+      if (!('passed' in result)) {
+        printBlock('验收未启动', result);
+        return 1;
+      }
       printBlock('恢复验收', result);
       return result.passed ? 0 : 1;
     }
@@ -78,7 +91,7 @@ export async function runCli(
     session = await prepareSession(task, options.planning, controller.signal);
     printBlock('工作副本', session.root);
 
-    // 【新增】先独占创建文件，防止两次 CLI 运行混写。
+    // 先独占创建文件，防止两次 CLI 运行混写。
     let logPath: string | undefined;
     if (options.sessionLog) {
       phase = '会话记录';
@@ -102,9 +115,10 @@ export async function runCli(
       fullHistory,
       ...(options.readOnly ? { readOnly: true } : {}),
       ...(options.approveTools ? { approveTools: true } : {}),
+      ...(options.gateCheck ? { deferCheck: true } : {}),
     };
     const first = await runSession(task, session, callModel, controller.signal, onEvent, runOptions);
-    // 【新增】首段落盘之后才启动追问。
+    // 首段落盘之后才启动追问。
     if (logPath) {
       phase = '会话记录';
       await appendRun(logPath, first, 0);
@@ -134,7 +148,14 @@ export async function runCli(
 
     if (options.checkpoint) {
       phase = '保存检查点';
-      await savePendingCheck(options.checkpoint, task, session, result, controller.signal);
+      await savePendingCheck(
+        options.checkpoint,
+        task,
+        session,
+        result,
+        controller.signal,
+        options.gateCheck,
+      );
       printBlock('检查点已保存', options.checkpoint);
       return 0;
     }

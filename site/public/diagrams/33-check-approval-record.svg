@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 207" role="img" aria-labelledby="title">
+<title id="title">恢复入口怎样解释一份决定</title>
+<defs><marker id="end" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#465470"/></marker></defs>
+<rect width="880" height="207" rx="16" fill="#f3f5fa"/>
+<g font-family="system-ui, PingFang SC, sans-serif" fill="#192642">
+<text x="28" y="49" font-size="25" font-weight="700">恢复入口怎样解释一份决定</text>
+<rect x="28" y="80" width="248" height="71" rx="11" fill="#ffffff" stroke="#aab3c2" stroke-width="2"/><text x="152" y="110" font-size="20" font-weight="700" text-anchor="middle">读检查点</text><text x="152" y="135" font-size="15" text-anchor="middle">取原文摘要 checkpointKey</text><path d="M280 116 H310" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="316" y="80" width="248" height="71" rx="11" fill="#e8edff" stroke="#4d5db7" stroke-width="2"/><text x="440" y="110" font-size="20" font-weight="700" text-anchor="middle">读 .approval</text><text x="440" y="135" font-size="15" text-anchor="middle">同一摘要 + approve / deny</text><path d="M568 116 H598" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="604" y="80" width="248" height="71" rx="11" fill="#ffffff" stroke="#aab3c2" stroke-width="2"/><text x="728" y="110" font-size="20" font-weight="700" text-anchor="middle">交给恢复入口</text><text x="728" y="135" font-size="15" text-anchor="middle">waiting / approved / denied</text>
+<text x="28" y="182" font-size="16">缺文件表示 waiting。内容损坏或摘要不符时，读取失败并停止恢复。</text>
+</g></svg>
