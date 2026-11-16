@@ -109,3 +109,5 @@ model定义模型输入输出契约，适配器认识服务协议；Runtime创�
 第 44 篇引入 @ai-harness/harness 公开根入口，允许 CLI 和独立宿主共用运行、工作区会话与交付判断。终端和桌面宿主生命周期留在应用层。
 
 第 45 篇在 Harness 根入口增加 createCodeTaskRunner。CLI 继续准备副本与权限，在同一 runner 上运行和审阅交付；独立宿主通过同一接口消费。
+
+第 46 篇增加 Electron 宿主。renderer 经 preload 请求主进程运行。主进程持有共享 runner、工作副本和控制器，并把有限事件和交付字段送回页面。

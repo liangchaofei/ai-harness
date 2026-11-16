@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; base-uri 'none'; frame-src 'none'; form-action 'none'">
+  <title>AI Harness</title>
+  <link rel="stylesheet" href="./style.css">
+  <script defer src="./renderer.js"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="brand">AI Harness</p>
+      <h1>修复总价计算</h1>
+      <p>在临时副本中将加法改为乘法，并检查正常数量和零数量。</p>
+      <div class="actions">
+        <button id="start" type="button">运行任务</button>
+        <button id="cancel" type="button" disabled>取消</button>
+      </div>
+    </header>
+    <div class="panels">
+      <section aria-labelledby="progress-heading">
+        <h2 id="progress-heading">运行记录</h2>
+        <ol id="progress" aria-live="polite"></ol>
+      </section>
+      <section aria-labelledby="result-heading">
+        <h2 id="result-heading">交付结果</h2>
+        <p id="status" role="status">等待运行</p>
+        <dl>
+          <dt>改动文件</dt><dd id="changes">—</dd>
+          <dt>匹配当前内容的验收</dt><dd id="check">—</dd>
+        </dl>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
