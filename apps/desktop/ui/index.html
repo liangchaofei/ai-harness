@@ -12,8 +12,22 @@
   <main>
     <header>
       <p class="brand">AI Harness</p>
-      <h1>修复总价计算</h1>
-      <p>在临时副本中将加法改为乘法，并检查正常数量和零数量。</p>
+      <h1>代码任务</h1>
+      <div class="settings">
+        <label for="task-id">任务
+          <select id="task-id">
+            <option value="total">修复总价计算</option>
+            <option value="route">修复路径规范化</option>
+          </select>
+        </label>
+        <label for="model-mode">模型
+          <select id="model-mode">
+            <option value="fixed">固定响应</option>
+            <option value="live">已配置的模型服务</option>
+          </select>
+        </label>
+      </div>
+      <p id="model-note" hidden>运行任务将调用你配置的模型服务。</p>
       <div class="actions">
         <button id="start" type="button">运行任务</button>
         <button id="cancel" type="button" disabled>取消</button>

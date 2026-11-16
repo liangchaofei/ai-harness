@@ -1,7 +1,9 @@
-// 【新增文件】创建窗口，在主进程持有任务与取消控制器。
+// 创建窗口，在主进程持有任务与取消控制器。
 import { app, BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron';
 import { fileURLToPath } from 'node:url';
-import { runTotalTask } from './run-total-task';
+import { runDesktopTask } from './run-task';
+import { DesktopModelConfigurationError, selectModel } from './model';
+import { pickTask } from './tasks';
 import type { DesktopTaskResult } from './types/task';
 
 const page = new URL('../ui/index.html', import.meta.url);
@@ -17,25 +19,35 @@ function verifySender(event: IpcMainInvokeEvent): void {
   }
 }
 
-ipcMain.handle('task:start', async (event) => {
+ipcMain.handle('task:start', async (event, taskId: unknown, modelMode: unknown) => {
   verifySender(event);
   if (active) {
     throw new Error('已有任务在运行。');
   }
 
+  // 【新增】渲染器只能提交已登记的 ID 与模式。
+  const task = pickTask(taskId);
+  if (!task || (modelMode !== 'fixed' && modelMode !== 'live')) {
+    throw new Error('任务或模型模式无效。');
+  }
+
   const sender = event.sender;
   const controller = new AbortController();
-  const completed = runTotalTask(controller.signal, (update) => {
-    if (!sender.isDestroyed()) {
-      sender.send('task:progress', update);
-    }
-  });
+  const completed = selectModel(modelMode, task).then((callModel) =>
+    runDesktopTask(task, callModel, controller.signal, (update) => {
+      if (!sender.isDestroyed()) {
+        sender.send('task:progress', update);
+      }
+    }),
+  );
   active = { controller, completed };
   try {
     return await completed;
   } catch (error) {
-    console.error(error);
-    throw new Error(controller.signal.aborted ? '任务准备已取消。' : '任务运行失败，请查看主进程日志。');
+    if (error instanceof DesktopModelConfigurationError) {
+      throw error;
+    }
+    throw new Error(controller.signal.aborted ? '任务准备已取消。' : '任务准备或审阅失败。');
   } finally {
     active = undefined;
   }
