@@ -75,3 +75,5 @@ features:
 [第 30 篇：在正式 CLI 里检查恢复证据](/guide/30-inspect-checkpoint)用只读诊断收拢第五阶段。
 
 [第 31 篇：让 Coding Agent 在只读模式下调查代码](/guide/31-read-only-policy)在工具执行前落实操作者选择的权限。
+
+[第 32 篇：在修改和验收前逐次询问操作者](/guide/32-tool-approval)在实际动作之前请求一次批准。

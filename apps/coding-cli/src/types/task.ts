@@ -36,6 +36,10 @@ export type CliOptions =
       inspectCheck?: string;
       /** 是否为本次运行提供 update_plan 工具，由 --plan 启用，默认关闭。 */
       planning: boolean;
+      /** 操作者明确限制本次任务只能执行调查工具。 */
+      readOnly?: boolean;
+      /** 操作者要求逐次批准修改与验收。 */
+      approveTools?: boolean;
       /** 第一段正常回答后提交的一条追问，省略时只运行一段。 */
       followUp?: string;
     };
@@ -84,4 +88,8 @@ export interface RunInputOptions {
   messages?: readonly Message[];
   /** 观察入口用的全量对照。为 true 时保留全量历史，跳过裁剪和验收摘要。 */
   fullHistory?: boolean;
+  /** 每段运行沿用同一个只读限制。 */
+  readOnly?: boolean;
+  /** 本段在修改与验收前等待一次终端批准。 */
+  approveTools?: boolean;
 }

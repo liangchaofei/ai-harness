@@ -60,6 +60,7 @@ export default defineConfig({
       ] },
       { text: '第六阶段 · 扩展、安全与人工介入', items: [
         { text: '31 让 Coding Agent 在只读模式下调查代码', link: '/guide/31-read-only-policy' },
+        { text: '32 在修改和验收前逐次询问操作者', link: '/guide/32-tool-approval' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },

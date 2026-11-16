@@ -1,12 +1,13 @@
 // 只处理终端参数，不读取环境或启动任务。
 import type { CliOptions } from '../types/task';
 
-export const helpText = `用法：ai-harness --task <任务.json> [--plan] [--follow-up <问题>] [--session-log <文件>] [--checkpoint <文件>]
+export const helpText = `用法：ai-harness --task <任务.json> [--plan] [--read-only | --approve-tools] [--follow-up <问题>] [--session-log <文件>] [--checkpoint <文件>]
 ai-harness --task <任务.json> --resume-check <检查点>
 ai-harness --task <任务.json> --inspect-check <检查点>
 ai-harness --resume-log <文件> --follow-up <问题>
 任务路径相对当前终端目录；配置内路径相对任务文件目录。
 --plan 开启实验性计划；--follow-up 在首次回答后追加一条问题。
+--read-only 只允许调查工具；--approve-tools 在修改或验收前逐次询问。
 --help 只显示帮助。
 退出码：0已接受，1未接受，2参数/准备/报告失败，130主动取消。`;
 
@@ -17,6 +18,8 @@ export function parseArgs(args: readonly string[]): CliOptions {
   }
   let taskFile: string | undefined;
   let planning = false;
+  let readOnly = false;
+  let approveTools = false;
   let followUp: string | undefined;
   let sessionLog: string | undefined;
   let resumeLog: string | undefined;
@@ -27,6 +30,10 @@ export function parseArgs(args: readonly string[]): CliOptions {
     const arg = args[i];
     if (arg === '--plan' && !planning) {
       planning = true;
+    } else if (arg === '--read-only' && !readOnly) {
+      readOnly = true;
+    } else if (arg === '--approve-tools' && !approveTools) {
+      approveTools = true;
     } else if (arg === '--follow-up' && followUp === undefined) {
       // 【新增】读取一条用户追问。引号由终端处理。
       const value = args[++i]?.trim();
@@ -76,13 +83,19 @@ export function parseArgs(args: readonly string[]): CliOptions {
     }
   }
   if (resumeLog) {
-    if (taskFile || sessionLog || planning || checkpoint || resumeCheck || inspectCheck || !followUp) {
+    if (approveTools || readOnly || taskFile || sessionLog || planning || checkpoint || resumeCheck || inspectCheck || !followUp) {
       throw new Error('只读接续需要且仅接受日志路径和一条追问。');
     }
     return { help: false, resumeLog, question: followUp };
   }
   if (!taskFile) {
     throw new Error('需要任务配置。');
+  }
+  if (approveTools && (readOnly || checkpoint || resumeCheck || inspectCheck)) {
+    throw new Error('逐次批准不能与只读或检查点选项混用。');
+  }
+  if (readOnly && (planning || checkpoint || resumeCheck || inspectCheck)) {
+    throw new Error('只读任务不能与计划或检查点选项混用。');
   }
   if (inspectCheck && (checkpoint || resumeCheck || followUp || planning || sessionLog)) {
     throw new Error('检查点诊断只接受任务配置与检查点路径。');
@@ -94,6 +107,8 @@ export function parseArgs(args: readonly string[]): CliOptions {
     help: false,
     taskFile,
     planning,
+    ...(readOnly ? { readOnly } : {}),
+    ...(approveTools ? { approveTools } : {}),
     ...(followUp ? { followUp } : {}),
     ...(sessionLog ? { sessionLog } : {}),
     ...(checkpoint ? { checkpoint } : {}),
