@@ -12,6 +12,7 @@ import { resumeConversation } from './session/resume-conversation';
 import { runSession } from './session/run';
 import { reportSession } from './report/report';
 import { printProgress, printBlock } from './report/terminal';
+import { openRunTrace } from './report/trace';
 import type { CliSession } from './types/session';
 
 /** CLI 接收退出码。观察入口可注入模型，并开启全量历史对照。 */
@@ -29,6 +30,7 @@ export async function runCli(
   };
   let session: CliSession | undefined;
   let invoicePolicy: Awaited<ReturnType<typeof openInvoicePolicy>> | undefined;
+  let trace: Awaited<ReturnType<typeof openRunTrace>> | undefined;
   let phase = '参数';
   process.on('SIGINT', onInterrupt);
 
@@ -100,14 +102,20 @@ export async function runCli(
       logPath = await createSessionLog(options.sessionLog, session.root);
     }
 
-    // 【新增】准备模型循环前发现规则工具，首段和追问共用连接。
+    // 准备模型循环前发现规则工具，首段和追问共用连接。
     if (task.extension === 'invoice-policy-mcp') {
       phase = '发票规则服务连接';
       invoicePolicy = await openInvoicePolicy(controller.signal);
     }
 
+    // 【新增】开始循环前独占创建文件，首段和追问共用句柄。
+    if (options.traceFile) {
+      phase = '诊断轨迹';
+      trace = await openRunTrace(options.traceFile);
+    }
+
     phase = '运行与报告';
-    const onEvent: RunEventListener = (event) => {
+    const onEvent: RunEventListener = async (event) => {
       printProgress(event);
       if (
         event.type === 'tool_end' &&
@@ -117,6 +125,7 @@ export async function runCli(
       ) {
         printBlock('任务计划（模型声明）', session.plan.read());
       }
+      await trace?.append(event);
     };
 
     const runOptions: RunInputOptions = {
@@ -179,7 +188,10 @@ export async function runCli(
     console.error(`${phase}失败；请检查配置或在对应函数断点查看原异常。`);
     return 2;
   } finally {
-    // 【新增】正常退出、异常和取消都要关闭本任务持有的连接。
+    if (trace) {
+      await trace.close().catch(() => console.error('关闭诊断轨迹失败。'));
+    }
+    // 正常退出、异常和取消都要关闭本任务持有的连接。
     if (invoicePolicy) {
       await invoicePolicy.close().catch(() => console.error('关闭发票规则服务连接失败。'));
     }

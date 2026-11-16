@@ -91,3 +91,5 @@ model定义模型输入输出契约，适配器认识服务协议；Runtime创�
 第 35 篇由 Coding CLI 负责 MCP 子进程生命周期，并将已确认的规则查询包装为 Runtime 工具。模型工具请求 ID 由 Runtime 管理，MCP 协议请求 ID 由客户端管理。
 
 第 36 篇在应用层装配验收命令，工具权限仍由 CLI 策略处理；启动后由 macOS 策略限制验收子进程的文件写入和网络。检查点恢复先校验执行策略。
+
+第 37 篇在 Coding CLI 观察层将 Runtime 事件投影成 JSONL，保留 runId、sequence 与工具调用 ID。原会话日志和实际交付规则各自沿用。

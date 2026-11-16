@@ -32,6 +32,8 @@ export type CliOptions =
       taskFile: string;
       /** 操作者指定的新会话记录文件，省略时只保留终端报告。 */
       sessionLog?: string;
+      /** 【新增】本次 CLI 要独占创建的 JSONL 诊断轨迹。 */
+      traceFile?: string;
       /** 受控交接时写入的新检查点路径。 */
       checkpoint?: string;
       /** 创建检查点时将验收留给单独批准后的恢复进程。 */
@@ -84,7 +86,7 @@ export interface TaskConfig {
   writablePaths: string[];
   /** 副本之外的可信.mjs验收；命令固定为当前Node加tsx和此脚本。 */
   checkScript: string;
-  /** 【新增】仅约束验收子进程的写入和网络。省略时沿用本地执行。 */
+  /** 仅约束验收子进程的写入和网络。省略时沿用本地执行。 */
   checkIsolation?: 'macos-offline-readonly';
   /** 操作者选择的扩展。省略时仅使用原工具。 */
   extension?: 'source-pair' | 'invoice-policy-mcp';
