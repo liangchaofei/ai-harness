@@ -14,6 +14,7 @@ import { reportSession } from './report/report';
 import { printProgress, printBlock } from './report/terminal';
 import { openRunTrace } from './report/trace';
 import { inspectRunTrace } from './report/inspect-trace';
+import { runEvalSuite } from './eval/run-suite';
 import type { CliSession } from './types/session';
 
 /** CLI 接收退出码。观察入口可注入模型，并开启全量历史对照。 */
@@ -42,7 +43,20 @@ export async function runCli(
       return 0;
     }
 
-    // 【新增】离线诊断先于模型、任务和工作副本装配。
+    // 【新增】批次逐项重用单任务入口，每项准备新的副本与运行状态。
+    if ('evalSuite' in options) {
+      phase = '任务集评估';
+      const { report, exitCode } = await runEvalSuite(
+        options.evalSuite,
+        options.evalOutput,
+        (taskArgs) => runCli(taskArgs, createCallModel, fullHistory),
+        controller.signal,
+      );
+      printBlock('任务集结果', report);
+      return exitCode;
+    }
+
+    // 离线诊断先于模型、任务和工作副本装配。
     if ('inspectTrace' in options) {
       phase = '离线轨迹诊断';
       printBlock('离线轨迹诊断', await inspectRunTrace(options.inspectTrace, controller.signal));
