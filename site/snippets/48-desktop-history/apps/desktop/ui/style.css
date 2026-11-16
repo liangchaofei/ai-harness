@@ -1,0 +1,59 @@
+:root {
+  font-family: "Inter", "PingFang SC", system-ui, sans-serif;
+  color: #1f2633;
+  background: #f4f3ef;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 960px; padding: 38px; margin: 0 auto; }
+header { border-bottom: 1px solid #d6d7d3; padding-bottom: 28px; }
+.brand { color: #335574; font-weight: 700; letter-spacing: .04em; }
+h1 { margin: 8px 0; font-size: 2rem; }
+p { color: #505969; }
+.actions { display: flex; gap: 10px; margin-top: 22px; }
+button {
+  padding: 10px 18px;
+  font: inherit;
+  font-weight: 650;
+  border: 1px solid #aab7c4;
+  border-radius: 7px;
+  background: #fff;
+  color: #263852;
+}
+button:first-child { border-color: #294a6b; background: #294a6b; color: #fff; }
+button:disabled { opacity: .48; }
+.panels { display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; margin-top: 24px; }
+section { background: #fff; padding: 18px 20px; border: 1px solid #dededa; border-radius: 9px; }
+h2 { font-size: 1.05rem; margin: 0 0 18px; }
+ol { display: grid; gap: 8px; padding: 0; margin: 0; list-style: none; }
+li { padding: 8px 0; color: #384857; border-bottom: 1px solid #ebedee; }
+#status { font-weight: 700; }
+dl { margin-bottom: 0; }
+dt { color: #505969; font-size: .875rem; }
+dd { margin: 4px 0 16px; }
+@media (max-width: 650px) {
+  main { padding: 22px; }
+  .panels { grid-template-columns: 1fr; }
+}
+.settings { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 20px; }
+.settings label { display: grid; gap: 6px; color: #384857; font-size: .875rem; }
+.settings select {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid #c3c8ce;
+  border-radius: 6px;
+  background: #fff;
+  color: #263852;
+  font: inherit;
+}
+.history { margin-top: 16px; }
+.history-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px; }
+.history-heading label { color: #505969; font-size: .875rem; }
+.history-heading select { max-width: 100%; margin-left: 6px; padding: 7px; font: inherit; }
+#history-progress { max-height: 165px; overflow: auto; }
+.diff-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.diff-columns h4 { margin: 0 0 6px; font-size: .875rem; color: #505969; }
+.diff-columns pre { margin: 0; padding: 12px; overflow: auto; border-radius: 6px; background: #f4f3ef; }
+@media (max-width: 650px) {
+  .diff-columns { grid-template-columns: 1fr; }
+}

@@ -1,5 +1,6 @@
-// 【新增文件】主进程允许传给桌面视图的数据。
+// 主进程允许传给桌面视图的数据。
 import type { RunResult } from '@ai-harness/harness';
+import type { DesktopTaskId } from '../tasks';
 
 /** 每次运行返回的简短结果，由主进程从验收证据提取。 */
 export interface DesktopTaskResult {
@@ -13,6 +14,10 @@ export interface DesktopTaskResult {
   accepted: boolean;
   /** 仅展示相对文件名。 */
   changedFiles: string[];
+  /** 【新增】审阅时保存的相对路径及修改前后原文。 */
+  changes: Array<{ path: string; before: string; after: string }>;
+  /** 【新增】已观察到的验收终态。没有可用验收时为空。 */
+  check: { status: 'passed' | 'failed' | 'timedOut' | 'outputLimit'; exitCode: number | null } | null;
 }
 
 /** 实时事件只保留阶段与顺序，不发送 Runtime 消息。 */
@@ -21,4 +26,15 @@ export interface DesktopTaskEvent {
   sequence: number;
   /** 可以展示的阶段摘要。 */
   label: string;
+}
+
+/** 【新增】主进程保存的审阅快照。任务副本清理后仍可读取。 */
+export interface DesktopRunRecord {
+  version: 1;
+  id: string;
+  finishedAt: string;
+  taskId: DesktopTaskId;
+  modelMode: 'fixed' | 'live';
+  events: DesktopTaskEvent[];
+  result: DesktopTaskResult;
 }

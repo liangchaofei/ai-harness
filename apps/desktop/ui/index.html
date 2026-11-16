@@ -47,6 +47,18 @@
         </dl>
       </section>
     </div>
+    <section class="history" aria-labelledby="history-heading">
+      <div class="history-heading">
+        <h2 id="history-heading">运行历史</h2>
+        <label for="history-id">查看记录
+          <select id="history-id" disabled></select>
+        </label>
+      </div>
+      <p id="history-status" role="status">正在读取历史</p>
+      <p id="history-check-detail" hidden></p>
+      <ol id="history-progress"></ol>
+      <div id="history-diff"></div>
+    </section>
   </main>
 </body>
 </html>

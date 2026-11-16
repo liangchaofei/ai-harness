@@ -19,12 +19,13 @@ const tasks = {
 };
 
 export type DesktopTaskId = keyof typeof tasks;
-export type DesktopTask = typeof tasks[DesktopTaskId];
+/** 由主进程解析出的任务，同时保留可用于历史的稳定 ID。 */
+export type DesktopTask = typeof tasks[DesktopTaskId] & { id: DesktopTaskId };
 
 /** 检查 IPC 入参为已登记 ID，再返回主进程私有的任务说明。 */
 export function pickTask(value: unknown): DesktopTask | undefined {
   if (value === 'total' || value === 'route') {
-    return tasks[value];
+    return { id: value, ...tasks[value] };
   }
   return undefined;
 }
