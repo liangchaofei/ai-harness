@@ -2,9 +2,10 @@
 import { ToolExecutionError, type ExecutableTool } from '@ai-harness/runtime';
 
 // 新工具默认拒绝，只有明确核对过的调查工具可以执行。
-// 【修改】允许已核对过的固定发票服务查询。
+// 【修改】入口调查的子运行只持有 read_file，可以在只读任务中调用。
 const readableTools = new Set([
   'find_files', 'search_source', 'read_file', 'read_source_pair', 'read_invoice_policy',
+  'delegate_entry_review',
 ]);
 
 /** 保留工具声明，在真正执行之前拒绝未获准的动作。 */

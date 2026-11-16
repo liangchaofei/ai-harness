@@ -16,7 +16,7 @@ export async function loadTask(taskFile: string, signal?: AbortSignal): Promise<
   if (!info.isFile() || info.size > 16 * 1024) throw new Error('任务配置应为小型JSON文件。');
   const value: unknown = JSON.parse(await readFile(configPath, { encoding: 'utf8', signal }));
   const keys = ['source', 'prompt', 'writablePaths', 'checkScript'];
-  // 【修改】可选项只允许指定的字段，仍保持四个必填字段。
+  // 可选项只允许指定的字段，仍保持四个必填字段。
   const optionalKeys = ['memory', 'extension', 'checkIsolation'];
   if (
     !isRecord(value) ||
@@ -26,12 +26,13 @@ export async function loadTask(taskFile: string, signal?: AbortSignal): Promise<
     throw new Error('任务字段不匹配。');
   }
   const { source, prompt, writablePaths, checkScript, extension, checkIsolation } = value;
-  // 【新增】任务只选择已知策略名，策略正文由 CLI 持有。
+  // 任务只选择已知策略名，策略正文由 CLI 持有。
   if (checkIsolation !== undefined && checkIsolation !== 'macos-offline-readonly') {
     throw new Error('任务指定了未知验收隔离策略。');
   }
-  // 只接受两个已知扩展名。
-  if (extension !== undefined && extension !== 'source-pair' && extension !== 'invoice-policy-mcp') {
+  // 【修改】扩展名只从应用持有的列表中选择。
+  if (extension !== undefined && extension !== 'source-pair' &&
+      extension !== 'invoice-policy-mcp' && extension !== 'entry-review') {
     throw new Error('任务指定了未知扩展。');
   }
   if (typeof source !== 'string' || !source.trim() || typeof checkScript !== 'string' || !checkScript.trim()

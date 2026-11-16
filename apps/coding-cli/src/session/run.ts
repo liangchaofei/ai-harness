@@ -6,6 +6,7 @@ import {
   type RunResult,
 } from '@ai-harness/runtime';
 import { createSourcePairTool } from '../extensions/source-pair';
+import { createEntryReviewTool } from './delegate-review';
 import { requireToolApproval } from './approve-tools';
 import { restrictToReadOnly } from './read-only-tools';
 import type { Message } from '@ai-harness/model';
@@ -43,15 +44,18 @@ export function runSession(
   if (session.plan) {
     tools.push(session.plan.tool);
   }
-  if (task.extension === 'source-pair') {
+  // 【修改】两种调查扩展都依赖同一副本的只读工具。
+  if (task.extension === 'source-pair' || task.extension === 'entry-review') {
     const read = tools.find((tool) => tool.name === 'read_file');
     if (!read) {
-      throw new Error('双文件调查扩展需要工作区读取工具。');
+      throw new Error('调查扩展需要工作区读取工具。');
     }
-    tools.push(createSourcePairTool(read.execute));
+    tools.push(task.extension === 'entry-review'
+      ? createEntryReviewTool(read, callModel)
+      : createSourcePairTool(read.execute));
   }
 
-  // 【新增】MCP 适配器作为普通工具进入后续的应用权限判断。
+  // MCP 适配器作为普通工具进入后续的应用权限判断。
   if (inputOptions.invoicePolicyTool) {
     tools.push(inputOptions.invoicePolicyTool);
   }
