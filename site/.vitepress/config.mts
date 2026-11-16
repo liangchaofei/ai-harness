@@ -62,6 +62,7 @@ export default defineConfig({
         { text: '31 让 Coding Agent 在只读模式下调查代码', link: '/guide/31-read-only-policy' },
         { text: '32 在修改和验收前逐次询问操作者', link: '/guide/32-tool-approval' },
         { text: '33 让验收等待跨进程批准', link: '/guide/33-check-approval' },
+        { text: '34 给 Coding Agent 接入双文件调查工具', link: '/guide/34-source-pair' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },

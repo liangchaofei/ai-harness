@@ -16,15 +16,18 @@ export async function loadTask(taskFile: string, signal?: AbortSignal): Promise<
   if (!info.isFile() || info.size > 16 * 1024) throw new Error('任务配置应为小型JSON文件。');
   const value: unknown = JSON.parse(await readFile(configPath, { encoding: 'utf8', signal }));
   const keys = ['source', 'prompt', 'writablePaths', 'checkScript'];
-  // 保留四个必填字段，只额外允许可选的 memory。
+  // 【修改】扩展配置是内置名称，任务文件不能指定模块路径。
   if (
     !isRecord(value) ||
     keys.some((key) => !Object.hasOwn(value, key)) ||
-    Object.keys(value).some((key) => !keys.includes(key) && key !== 'memory')
+    Object.keys(value).some((key) => !keys.includes(key) && key !== 'memory' && key !== 'extension')
   ) {
     throw new Error('任务字段不匹配。');
   }
-  const { source, prompt, writablePaths, checkScript } = value;
+  const { source, prompt, writablePaths, checkScript, extension } = value;
+  if (extension !== undefined && extension !== 'source-pair') {
+    throw new Error('任务指定了未知扩展。');
+  }
   if (typeof source !== 'string' || !source.trim() || typeof checkScript !== 'string' || !checkScript.trim()
     || typeof prompt !== 'string' || !prompt.trim() || prompt.length > 4000
     || !Array.isArray(writablePaths) || writablePaths.length < 1 || writablePaths.length > 16
@@ -42,7 +45,7 @@ export async function loadTask(taskFile: string, signal?: AbortSignal): Promise<
     && scriptRelative !== '..' && !scriptRelative.startsWith('../'))) throw new Error('验收应在材料目录之外。');
   // 只在加载任务时读取；模型调用期间复用选中的一条记录。
   const memory = await loadTaskMemory(value.memory, base, signal);
-  // 【新增】读取笔记和授权写入是两项独立的配置决定。
+  // 读取笔记和授权写入是两项独立的配置决定。
   let memoryCapture: MemoryCapture | undefined;
   if (isRecord(value.memory) && Object.hasOwn(value.memory, 'captureCase')) {
     const { file, topic, captureCase } = value.memory;
@@ -68,8 +71,8 @@ export async function loadTask(taskFile: string, signal?: AbortSignal): Promise<
     prompt: prompt.trim(),
     writablePaths: [...writablePaths],
     checkScript: scriptPath,
+    ...(extension ? { extension } : {}),
     ...(memory ? { memory } : {}),
     ...(memoryCapture ? { memoryCapture } : {}),
   };
-
 }

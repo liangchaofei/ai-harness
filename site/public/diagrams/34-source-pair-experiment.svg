@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 207" role="img" aria-labelledby="title">
+<title id="title">真实工具如何验证固定响应</title>
+<defs><marker id="end" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#465470"/></marker></defs>
+<rect width="880" height="207" rx="16" fill="#f3f5fa"/>
+<g font-family="system-ui, PingFang SC, sans-serif" fill="#192642">
+<text x="28" y="49" font-size="25" font-weight="700">真实工具如何验证固定响应</text>
+<rect x="28" y="80" width="248" height="71" rx="11" fill="#ffffff" stroke="#aab3c2" stroke-width="2"/><text x="152" y="110" font-size="20" font-weight="700" text-anchor="middle">读两份文件</text><text x="152" y="135" font-size="15" text-anchor="middle">把出口与当前实现交回模型</text><path d="M280 116 H310" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="316" y="80" width="248" height="71" rx="11" fill="#e8edff" stroke="#4d5db7" stroke-width="2"/><text x="440" y="110" font-size="20" font-weight="700" text-anchor="middle">修改 + 验收</text><text x="440" y="135" font-size="15" text-anchor="middle">扣一次折扣，五项真实验收</text><path d="M568 116 H598" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="604" y="80" width="248" height="71" rx="11" fill="#ffffff" stroke="#aab3c2" stroke-width="2"/><text x="728" y="110" font-size="20" font-weight="700" text-anchor="middle">对照只读调查</text><text x="728" y="135" font-size="15" text-anchor="middle">越界失败 → 换合法路径成功</text>
+<text x="28" y="182" font-size="16">固定模型决定调用顺序。验收脚本与工作区限制均按真实路径执行。</text>
+</g></svg>

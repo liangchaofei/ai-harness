@@ -1,0 +1,7 @@
+{
+  "source": "../workspace-review",
+  "prompt": "从 src/main.ts 调查金额计算。若有双文件调查工具，用它核对入口与候选实现的关系。按照 README 修复重复折扣，只修改获准的计算文件，保留数量和折扣阈值，运行实际验收并报告结果。",
+  "writablePaths": ["src/checkout/invoice.ts"],
+  "checkScript": "./check-invoice.mjs",
+  "extension": "source-pair"
+}
