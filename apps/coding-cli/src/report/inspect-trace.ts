@@ -6,7 +6,7 @@ import { z } from 'zod';
 const MAX_TRACE_BYTES = 256 * 1024;
 const count = z.number().int().nonnegative();
 const status = z.enum(['answered', 'callLimit', 'truncated', 'emptyAnswer', 'failed', 'cancelled', 'timedOut', 'toolLimit']);
-// 【新增】可选扩展字段。历史轨迹缺省它，表示子运行计数未知。
+// 可选扩展字段。历史轨迹缺省它，表示子运行计数未知。
 const childSummary = z.object({
   childRunId: z.string().min(1),
   status,
@@ -37,7 +37,8 @@ const row = z.union([
     status,
     modelCalls: count,
     toolCalls: count,
-    childRuns: z.array(childSummary).max(1).optional(),
+    // 【修改】同一父段允许一批最多三个子运行。
+    childRuns: z.array(childSummary).max(3).optional(),
   }),
   // 这些事件参与运行顺序检查，但不用于本篇的停止归因。
   envelope.extend({
@@ -125,9 +126,11 @@ function summarizeRun(events: Array<z.infer<typeof row>>) {
     return { ...base, evidence: 'inconsistent' as const, status: end.status, toolCalls: end.toolCalls };
   }
 
-  // 【新增】子运行必须与父运行身份不同，且父段有委派请求的处理证据。
-  if (end.childRuns?.some((child) => child.childRunId === end.runId) ||
-      (end.childRuns?.length && !starts.some((event) => event.toolName === 'delegate_entry_review'))) {
+  // 子运行必须与父运行身份不同，且父段有委派请求的处理证据。
+  // 【修改】同一批的子 ID 必须唯一，并与父 ID 不同。
+  const childIds = end.childRuns?.map((child) => child.childRunId) ?? [];
+  if (childIds.includes(end.runId) || new Set(childIds).size !== childIds.length ||
+      (childIds.length > 0 && !starts.some((event) => event.toolName === 'delegate_entry_review'))) {
     return { ...base, evidence: 'inconsistent' as const, status: end.status, toolCalls: end.toolCalls };
   }
 

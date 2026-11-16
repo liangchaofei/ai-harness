@@ -73,6 +73,10 @@ export default defineConfig({
         { text: '40 比较两次评估，定位哪项任务退化了', link: '/guide/40-compare-eval' },
         { text: '41 把入口调查委派给一个只读子运行', link: '/guide/41-delegate-review' },
         { text: '42 用同一任务对照直接调查与只读委派', link: '/guide/42-delegation-cost' },
+        { text: '43 让多项只读调查限量并发，再按顺序汇合', link: '/guide/43-parallel-review' },
+      ] },
+      { text: '第八阶段 · 框架收敛与桌面应用', items: [
+        { text: '44 让仓库外的应用安装并使用 Harness', link: '/guide/44-harness-package' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },

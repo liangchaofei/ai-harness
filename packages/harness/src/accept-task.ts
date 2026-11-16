@@ -1,8 +1,8 @@
-// 【新增文件】CLI的任务接受规则，独立于模型回答与计划状态。
+// 【新增文件】宿主共用的代码交付判断，保持与 CLI 原规则一致。
 import type { CodeTaskReview } from '@ai-harness/coding-tools';
 import type { RunResult } from '@ai-harness/runtime';
 
-/** 当前CLI约定可信验收stdout为JSON且passed:true；并非所有程序通用的成功协议。 */
+/** 按可信验收约定判断交付，stdout 必须是包含 passed: true 的 JSON。 */
 export function acceptTask(
   result: RunResult,
   review: CodeTaskReview,

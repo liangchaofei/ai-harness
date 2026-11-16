@@ -1,6 +1,6 @@
 // 把已准备的任务接到现有Runtime，不再实现一套循环。
+import { runAgent } from '@ai-harness/harness';
 import {
-  runAgent,
   type ModelCall,
   type RunEventListener,
   type RunResult,

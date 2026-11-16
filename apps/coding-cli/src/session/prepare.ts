@@ -2,7 +2,7 @@
 import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createCodeTaskSession } from '@ai-harness/coding-tools';
+import { createCodeTaskSession } from '@ai-harness/harness';
 import { createPlanSession } from '@ai-harness/runtime';
 import type { TaskConfig } from '../types/task';
 import type { CliSession } from '../types/session';

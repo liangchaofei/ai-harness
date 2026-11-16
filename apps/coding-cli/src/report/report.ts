@@ -3,7 +3,7 @@ import type { RunResult } from '@ai-harness/runtime';
 import type { TaskConfig } from '../types/task';
 import type { CliSession } from '../types/session';
 import { saveAcceptedMemory } from '../context/save-memory';
-import { acceptTask } from './accept';
+import { acceptTask } from '@ai-harness/harness';
 import { printBlock } from './terminal';
 
 /** main调用；inspect失败继续抛出，不能沿用旧报告或按模型总结接受。 */
