@@ -66,6 +66,9 @@ export default defineConfig({
         { text: '35 用 MCP 接入进程外的发票规则', link: '/guide/35-invoice-mcp' },
         { text: '36 限制验收进程写文件和使用网络', link: '/guide/36-check-isolation' },
       ] },
+      { text: '第七阶段 · 评估、调试与任务编排', items: [
+        { text: '37 用结构化轨迹定位工具为什么没执行', link: '/guide/37-run-trace' },
+      ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },
     docFooter: { prev: '上一篇', next: '下一篇' },

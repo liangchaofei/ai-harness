@@ -1,7 +1,7 @@
 // 只处理终端参数，不读取环境或启动任务。
 import type { CheckDecision, CliOptions } from '../types/task';
 
-export const helpText = `用法：ai-harness --task <任务.json> [--plan] [--read-only | --approve-tools] [--follow-up <问题>] [--session-log <文件>] [--checkpoint <文件> [--gate-check]]
+export const helpText = `用法：ai-harness --task <任务.json> [--plan] [--read-only | --approve-tools] [--follow-up <问题>] [--session-log <文件>] [--trace-file <新文件>] [--checkpoint <文件> [--gate-check]]
 ai-harness --task <任务.json> --resume-check <检查点>
 ai-harness --task <任务.json> --inspect-check <检查点>
 ai-harness --task <任务.json> --decide-check <检查点> <approve|deny>
@@ -10,6 +10,7 @@ ai-harness --resume-log <文件> --follow-up <问题>
 --plan 开启实验性计划；--follow-up 在首次回答后追加一条问题。
 --read-only 只允许调查工具；--approve-tools 在修改或验收前逐次询问。
 --gate-check 让保存的检查点等待人工批准，准备阶段暂不提供验收工具。
+--trace-file 在新任务运行时保存结构化事件。
 --help 只显示帮助。
 退出码：0已接受，1未接受，2参数/准备/报告失败，130主动取消。`;
 
@@ -24,11 +25,12 @@ export function parseArgs(args: readonly string[]): CliOptions {
   let approveTools = false;
   let followUp: string | undefined;
   let sessionLog: string | undefined;
+  let traceFile: string | undefined;
   let resumeLog: string | undefined;
   let checkpoint: string | undefined;
   let resumeCheck: string | undefined;
   let inspectCheck: string | undefined;
-  // 【新增】保存时声明门禁，决定时另收路径和动作。
+  // 保存时声明门禁，决定时另收路径和动作。
   let gateCheck = false;
   let decideCheck: { path: string; decision: CheckDecision } | undefined;
   for (let i = 0; i < args.length; i += 1) {
@@ -53,6 +55,13 @@ export function parseArgs(args: readonly string[]): CliOptions {
         throw new Error('会话记录路径缺失。');
       }
       sessionLog = value;
+    } else if (arg === '--trace-file' && traceFile === undefined) {
+      // 【新增】路径由操作者提供，后续只允许新建文件。
+      const value = args[++i];
+      if (!value?.trim() || value.startsWith('--')) {
+        throw new Error('诊断轨迹路径缺失。');
+      }
+      traceFile = value;
     } else if (arg === '--resume-log' && resumeLog === undefined) {
       const value = args[++i];
       if (!value?.trim() || value.startsWith('--')) {
@@ -97,7 +106,7 @@ export function parseArgs(args: readonly string[]): CliOptions {
     }
   }
   if (resumeLog) {
-    if (approveTools || readOnly || taskFile || sessionLog || planning || checkpoint || resumeCheck || inspectCheck || gateCheck || decideCheck || !followUp) {
+    if (approveTools || readOnly || taskFile || sessionLog || traceFile || planning || checkpoint || resumeCheck || inspectCheck || gateCheck || decideCheck || !followUp) {
       throw new Error('只读接续需要且仅接受日志路径和一条追问。');
     }
     return { help: false, resumeLog, question: followUp };
@@ -105,7 +114,11 @@ export function parseArgs(args: readonly string[]): CliOptions {
   if (!taskFile) {
     throw new Error('需要任务配置。');
   }
-  // 【新增】决定只写记录，不能与保存、运行或恢复混在一次调用中。
+  // 【新增】这些入口不会启动任务模型循环。
+  if (traceFile && (resumeCheck || inspectCheck || decideCheck)) {
+    throw new Error('诊断轨迹只支持新任务运行。');
+  }
+  // 决定只写记录，不能与保存、运行或恢复混在一次调用中。
   if (gateCheck && !checkpoint) {
     throw new Error('--gate-check 需要 --checkpoint。');
   }
@@ -133,6 +146,7 @@ export function parseArgs(args: readonly string[]): CliOptions {
     ...(approveTools ? { approveTools } : {}),
     ...(followUp ? { followUp } : {}),
     ...(sessionLog ? { sessionLog } : {}),
+    ...(traceFile ? { traceFile } : {}),
     ...(checkpoint ? { checkpoint } : {}),
     ...(gateCheck ? { gateCheck } : {}),
     ...(decideCheck ? { decideCheck } : {}),
