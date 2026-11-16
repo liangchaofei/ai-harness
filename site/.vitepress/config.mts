@@ -63,6 +63,7 @@ export default defineConfig({
         { text: '32 在修改和验收前逐次询问操作者', link: '/guide/32-tool-approval' },
         { text: '33 让验收等待跨进程批准', link: '/guide/33-check-approval' },
         { text: '34 给 Coding Agent 接入双文件调查工具', link: '/guide/34-source-pair' },
+        { text: '35 用 MCP 接入进程外的发票规则', link: '/guide/35-invoice-mcp' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },

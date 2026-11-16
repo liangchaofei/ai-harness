@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "mcp"
   ],
   "bin": {
     "ai-harness": "./dist/cli.js"
@@ -13,9 +14,11 @@
     "build": "tsup src/cli.ts --format esm --sourcemap --clean --target node22 --tsconfig tsconfig.json"
   },
   "dependencies": {
+    "@ai-harness/coding-tools": "0.1.0",
     "@ai-harness/model": "0.1.0",
     "@ai-harness/runtime": "0.1.0",
-    "@ai-harness/coding-tools": "0.1.0",
-    "tsx": "4.23.15"
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "tsx": "4.23.15",
+    "zod": "4.6.7"
   }
 }

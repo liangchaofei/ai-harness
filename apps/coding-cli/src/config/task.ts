@@ -16,7 +16,7 @@ export async function loadTask(taskFile: string, signal?: AbortSignal): Promise<
   if (!info.isFile() || info.size > 16 * 1024) throw new Error('任务配置应为小型JSON文件。');
   const value: unknown = JSON.parse(await readFile(configPath, { encoding: 'utf8', signal }));
   const keys = ['source', 'prompt', 'writablePaths', 'checkScript'];
-  // 【修改】扩展配置是内置名称，任务文件不能指定模块路径。
+  // 扩展配置是内置名称，任务文件不能指定模块路径。
   if (
     !isRecord(value) ||
     keys.some((key) => !Object.hasOwn(value, key)) ||
@@ -25,7 +25,8 @@ export async function loadTask(taskFile: string, signal?: AbortSignal): Promise<
     throw new Error('任务字段不匹配。');
   }
   const { source, prompt, writablePaths, checkScript, extension } = value;
-  if (extension !== undefined && extension !== 'source-pair') {
+  // 【修改】只接受两个已知扩展名。
+  if (extension !== undefined && extension !== 'source-pair' && extension !== 'invoice-policy-mcp') {
     throw new Error('任务指定了未知扩展。');
   }
   if (typeof source !== 'string' || !source.trim() || typeof checkScript !== 'string' || !checkScript.trim()

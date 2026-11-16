@@ -1,0 +1,7 @@
+{
+  "source": "../workspace-review",
+  "prompt": "从 src/main.ts 调查发票金额。用规则查询工具核对 bulk-discount，再按真实入口修复重复折扣。只改获准文件，最后运行验收并报告结果。",
+  "writablePaths": ["src/checkout/invoice.ts"],
+  "checkScript": "./check-invoice.mjs",
+  "extension": "invoice-policy-mcp"
+}

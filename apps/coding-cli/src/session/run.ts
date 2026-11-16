@@ -38,7 +38,7 @@ export function runSession(
   // 单条消息数组有两个方括号，插入已有数组时只增加消息和一个逗号。
   const memoryBytes = memory ? messageBytes([memory]) - 1 : 0;
 
-  // 【修改】在应用层装配扩展，之后仍走同一份工具策略和 Runtime 调用。
+  // 在应用层装配扩展，之后仍走同一份工具策略和 Runtime 调用。
   const tools = [...session.codeTask.tools];
   if (session.plan) {
     tools.push(session.plan.tool);
@@ -49,6 +49,11 @@ export function runSession(
       throw new Error('双文件调查扩展需要工作区读取工具。');
     }
     tools.push(createSourcePairTool(read.execute));
+  }
+
+  // 【新增】MCP 适配器作为普通工具进入后续的应用权限判断。
+  if (inputOptions.invoicePolicyTool) {
+    tools.push(inputOptions.invoicePolicyTool);
   }
 
   // 等待跨进程批准的任务，首段拿不到实际验收工具。

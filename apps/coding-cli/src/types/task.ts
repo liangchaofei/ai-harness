@@ -1,5 +1,6 @@
 // 终端参数与已解析任务的应用契约。
 import type { Message } from '@ai-harness/model';
+import type { ExecutableTool } from '@ai-harness/runtime';
 
 /** loadTaskMemory 选中的一条旧记录，由 runSession 转成本轮输入中的参考消息。 */
 export interface TaskMemory {
@@ -83,8 +84,8 @@ export interface TaskConfig {
   writablePaths: string[];
   /** 副本之外的可信.mjs验收；命令固定为当前Node加tsx和此脚本。 */
   checkScript: string;
-  /** 【新增】操作者选择的内置扩展。省略时仅使用原工具。 */
-  extension?: 'source-pair';
+  /** 【修改】操作者选择的扩展。省略时仅使用原工具。 */
+  extension?: 'source-pair' | 'invoice-policy-mcp';
   /** loadTask 已选中的外部笔记。未配置或未命中时省略。 */
   memory?: TaskMemory;
   /** 有此配置才在交付后尝试保存验收线索。 */
@@ -103,4 +104,6 @@ export interface RunInputOptions {
   approveTools?: boolean;
   /** 本段只准备改动，run_check 留给检查点恢复入口。 */
   deferCheck?: boolean;
+  /** 【新增】CLI 已接通的规则工具，由同一任务的各个运行段复用。 */
+  invoicePolicyTool?: ExecutableTool;
 }
