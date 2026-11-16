@@ -11,12 +11,15 @@ export interface TaskMemory {
   hint: string;
 }
 
+/** 操作者通过 --decide-check 保存的一次批准或拒绝。 */
+export type CheckDecision = 'approve' | 'deny';
+
 /** 参数解析器创建；main据此选择帮助或加载配置，不发起模型调用。 */
 export type CliOptions =
   | { help: true }
   | {
       help: false;
-      /** 【新增】只读接续模式使用的会话日志路径。 */
+      /** 只读接续模式使用的会话日志路径。 */
       resumeLog: string;
       /** 追加到旧历史末尾的新问题。 */
       question: string;
@@ -26,10 +29,14 @@ export type CliOptions =
       help: false;
       /** --task 指定的任务配置路径，由 loadTask 相对当前工作目录解析。 */
       taskFile: string;
-      /** 【新增】操作者指定的新会话记录文件，省略时只保留终端报告。 */
+      /** 操作者指定的新会话记录文件，省略时只保留终端报告。 */
       sessionLog?: string;
       /** 受控交接时写入的新检查点路径。 */
       checkpoint?: string;
+      /** 【新增】创建检查点时将验收留给单独批准后的恢复进程。 */
+      gateCheck?: boolean;
+      /** 【新增】仅记录对指定检查点的决定。 */
+      decideCheck?: { path: string; decision: CheckDecision };
       /** 从此检查点对旧副本执行一次验收。 */
       resumeCheck?: string;
       /** 检查指定检查点的证据，不执行验收。 */
@@ -44,7 +51,7 @@ export type CliOptions =
       followUp?: string;
     };
 
-/** 【新增】磁盘上的一条笔记。写入时保留已有的附加字段。 */
+/** 磁盘上的一条笔记。写入时保留已有的附加字段。 */
 export interface MemoryNote {
   /** 同一文件内用于查找与更新的键。 */
   topic: string;
@@ -56,7 +63,7 @@ export interface MemoryNote {
   [key: string]: unknown;
 }
 
-/** 【新增】操作者为本任务授权的写入范围，由 loadTask 解析后交给报告层。 */
+/** 操作者为本任务授权的写入范围，由 loadTask 解析后交给报告层。 */
 export interface MemoryCapture {
   /** 已存在的笔记文件的绝对路径。 */
   path: string;
@@ -78,7 +85,7 @@ export interface TaskConfig {
   checkScript: string;
   /** loadTask 已选中的外部笔记。未配置或未命中时省略。 */
   memory?: TaskMemory;
-  /** 【新增】有此配置才在交付后尝试保存验收线索。 */
+  /** 有此配置才在交付后尝试保存验收线索。 */
   memoryCapture?: MemoryCapture;
 }
 
@@ -92,4 +99,6 @@ export interface RunInputOptions {
   readOnly?: boolean;
   /** 本段在修改与验收前等待一次终端批准。 */
   approveTools?: boolean;
+  /** 【新增】本段只准备改动，run_check 留给检查点恢复入口。 */
+  deferCheck?: boolean;
 }

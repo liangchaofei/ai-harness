@@ -77,3 +77,5 @@ features:
 [第 31 篇：让 Coding Agent 在只读模式下调查代码](/guide/31-read-only-policy)在工具执行前落实操作者选择的权限。
 
 [第 32 篇：在修改和验收前逐次询问操作者](/guide/32-tool-approval)在实际动作之前请求一次批准。
+
+[第 33 篇：让验收等待跨进程批准](/guide/33-check-approval)保存对一次具体验收的决定，另起进程继续。

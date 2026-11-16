@@ -4,7 +4,8 @@ import { readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import { isAbsolute, resolve } from 'node:path';
 import type { RunResult } from '@ai-harness/runtime';
 import type { CliSession } from '../types/session';
-import type { TaskConfig } from '../types/task';
+import type { CheckDecision, TaskConfig } from '../types/task';
+import { readCheckApproval, saveCheckApproval } from './check-approval';
 import { claimCheck, inspectCheckReceipt, saveCheckReceipt } from './check-receipt';
 import { openTaskWorkspace } from './prepare';
 
@@ -20,6 +21,8 @@ interface PendingCheck {
   revision: string;
   /** 任务来源、可写路径、验收脚本位置和脚本正文的指纹。 */
   taskKey: string;
+  /** 【新增】写入 true 才需要人工决定。旧检查点没有该字段。 */
+  requiresApproval?: true;
 }
 
 function isPendingCheck(value: unknown): value is PendingCheck {
@@ -28,7 +31,8 @@ function isPendingCheck(value: unknown): value is PendingCheck {
   return item.version === 1 && item.next === 'check' &&
     typeof item.workspace === 'string' && isAbsolute(item.workspace) &&
     typeof item.revision === 'string' && /^[a-f0-9]{64}$/.test(item.revision) &&
-    typeof item.taskKey === 'string' && /^[a-f0-9]{64}$/.test(item.taskKey);
+    typeof item.taskKey === 'string' && /^[a-f0-9]{64}$/.test(item.taskKey) &&
+    (item.requiresApproval === undefined || item.requiresApproval === true);
 }
 
 async function taskKey(task: TaskConfig, signal?: AbortSignal): Promise<string> {
@@ -48,6 +52,7 @@ export async function savePendingCheck(
   session: CliSession,
   result: RunResult,
   signal?: AbortSignal,
+  requiresApproval = false,
 ): Promise<void> {
   const requestedCheck = result.messages.some((message) =>
     message.role === 'assistant' && message.toolCalls.some((call) => call.name === 'run_check'),
@@ -65,6 +70,7 @@ export async function savePendingCheck(
     workspace: await realpath(session.root),
     revision: review.currentRevision,
     taskKey: await taskKey(task, signal),
+    ...(requiresApproval ? { requiresApproval: true } : {}),
   };
   signal?.throwIfAborted();
   await writeFile(path, JSON.stringify(entry) + '\n', { flag: 'wx', mode: 0o600 });
@@ -93,12 +99,31 @@ async function openPendingCheck(path: string, task: TaskConfig, signal?: AbortSi
   return { checkpointPath, checkpointKey, entry, session };
 }
 
-/** 操作者查看当前检查点。输出只含状态、路径和历史验收结论。 */
+/** 【新增】先核对任务和副本，再写入操作者对这一个待验收动作的决定。 */
+export async function decidePendingCheck(
+  path: string,
+  task: TaskConfig,
+  decision: CheckDecision,
+  signal?: AbortSignal,
+) {
+  const { checkpointPath, checkpointKey, entry } = await openPendingCheck(path, task, signal);
+  if (!entry.requiresApproval || (await inspectCheckReceipt(checkpointPath, checkpointKey)).status !== 'pending') {
+    throw new Error('当前检查点没有可批准的待验收动作。');
+  }
+  await saveCheckApproval(checkpointPath, checkpointKey, decision, signal);
+  return { workspace: entry.workspace, approval: decision === 'approve' ? 'approved' : 'denied' };
+}
+
+/** 操作者查看检查点的批准与执行证据。 */
 export async function inspectPendingCheck(path: string, task: TaskConfig, signal?: AbortSignal) {
   const { checkpointPath, checkpointKey, entry } = await openPendingCheck(path, task, signal);
   const state = await inspectCheckReceipt(checkpointPath, checkpointKey);
+  const approval = entry.requiresApproval
+    ? await readCheckApproval(checkpointPath, checkpointKey, signal)
+    : 'notRequired';
   return {
     workspace: entry.workspace,
+    approval,
     status: state.status,
     ...(state.status === 'completed' ? { historicalPassed: state.receipt.passed } : {}),
   };
@@ -107,10 +132,17 @@ export async function inspectPendingCheck(path: string, task: TaskConfig, signal
 /** 先确认副本和任务，再占用检查点并执行一次原有验收。 */
 export async function resumePendingCheck(path: string, task: TaskConfig, signal?: AbortSignal) {
   const { checkpointPath, checkpointKey, entry, session } = await openPendingCheck(path, task, signal);
+  // 【新增】等待或拒绝时，在创建 .started 前退出。
+  if (entry.requiresApproval) {
+    const approval = await readCheckApproval(checkpointPath, checkpointKey, signal);
+    if (approval !== 'approved') {
+      return { workspace: entry.workspace, approval };
+    }
+  }
   const check = session.tools.find((tool) => tool.name === 'run_check');
   if (!check) throw new Error('当前任务缺少验收工具。');
 
-  // 【修改】已有匹配回执时复用结果；已占用且无回执时由 claimCheck 拒绝继续。
+  // 已有匹配回执时复用结果；已占用且无回执时由 claimCheck 拒绝继续。
   signal?.throwIfAborted();
   const receipt = await claimCheck(checkpointPath, checkpointKey);
   if (receipt) {
@@ -122,7 +154,7 @@ export async function resumePendingCheck(path: string, task: TaskConfig, signal?
   const passed = after.checkMatchesCurrent && after.currentRevision === entry.revision &&
     after.lastCheck?.status === 'passed' && after.lastCheck.exitCode === 0 &&
     typeof report === 'object' && report !== null && 'passed' in report && report.passed === true;
-  // 【新增】先写回执，再向调用方返回结果。
+  // 先写回执，再向调用方返回结果。
   await saveCheckReceipt(checkpointPath, { checkpointKey, passed, feedback });
   return { workspace: entry.workspace, passed, feedback, reused: false };
 }
