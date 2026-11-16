@@ -84,7 +84,9 @@ export interface TaskConfig {
   writablePaths: string[];
   /** 副本之外的可信.mjs验收；命令固定为当前Node加tsx和此脚本。 */
   checkScript: string;
-  /** 【修改】操作者选择的扩展。省略时仅使用原工具。 */
+  /** 【新增】仅约束验收子进程的写入和网络。省略时沿用本地执行。 */
+  checkIsolation?: 'macos-offline-readonly';
+  /** 操作者选择的扩展。省略时仅使用原工具。 */
   extension?: 'source-pair' | 'invoice-policy-mcp';
   /** loadTask 已选中的外部笔记。未配置或未命中时省略。 */
   memory?: TaskMemory;
@@ -104,6 +106,6 @@ export interface RunInputOptions {
   approveTools?: boolean;
   /** 本段只准备改动，run_check 留给检查点恢复入口。 */
   deferCheck?: boolean;
-  /** 【新增】CLI 已接通的规则工具，由同一任务的各个运行段复用。 */
+  /** CLI 已接通的规则工具，由同一任务的各个运行段复用。 */
   invoicePolicyTool?: ExecutableTool;
 }

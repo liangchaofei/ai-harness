@@ -16,16 +16,21 @@ export async function loadTask(taskFile: string, signal?: AbortSignal): Promise<
   if (!info.isFile() || info.size > 16 * 1024) throw new Error('任务配置应为小型JSON文件。');
   const value: unknown = JSON.parse(await readFile(configPath, { encoding: 'utf8', signal }));
   const keys = ['source', 'prompt', 'writablePaths', 'checkScript'];
-  // 扩展配置是内置名称，任务文件不能指定模块路径。
+  // 【修改】可选项只允许指定的字段，仍保持四个必填字段。
+  const optionalKeys = ['memory', 'extension', 'checkIsolation'];
   if (
     !isRecord(value) ||
     keys.some((key) => !Object.hasOwn(value, key)) ||
-    Object.keys(value).some((key) => !keys.includes(key) && key !== 'memory' && key !== 'extension')
+    Object.keys(value).some((key) => !keys.includes(key) && !optionalKeys.includes(key))
   ) {
     throw new Error('任务字段不匹配。');
   }
-  const { source, prompt, writablePaths, checkScript, extension } = value;
-  // 【修改】只接受两个已知扩展名。
+  const { source, prompt, writablePaths, checkScript, extension, checkIsolation } = value;
+  // 【新增】任务只选择已知策略名，策略正文由 CLI 持有。
+  if (checkIsolation !== undefined && checkIsolation !== 'macos-offline-readonly') {
+    throw new Error('任务指定了未知验收隔离策略。');
+  }
+  // 只接受两个已知扩展名。
   if (extension !== undefined && extension !== 'source-pair' && extension !== 'invoice-policy-mcp') {
     throw new Error('任务指定了未知扩展。');
   }
@@ -72,6 +77,7 @@ export async function loadTask(taskFile: string, signal?: AbortSignal): Promise<
     prompt: prompt.trim(),
     writablePaths: [...writablePaths],
     checkScript: scriptPath,
+    ...(checkIsolation ? { checkIsolation } : {}),
     ...(extension ? { extension } : {}),
     ...(memory ? { memory } : {}),
     ...(memoryCapture ? { memoryCapture } : {}),

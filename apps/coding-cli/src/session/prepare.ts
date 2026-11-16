@@ -1,4 +1,4 @@
-// 【新增文件】从可信材料建立一次独立代码任务，不依赖示例目录。
+// 从可信材料建立一次独立代码任务，不依赖示例目录。
 import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -6,6 +6,7 @@ import { createCodeTaskSession } from '@ai-harness/coding-tools';
 import { createPlanSession } from '@ai-harness/runtime';
 import type { TaskConfig } from '../types/task';
 import type { CliSession } from '../types/session';
+import { createCheckCommand } from './check-command';
 
 /** main传入解析后配置；准备失败清理半成品，成功后由main保留副本。 */
 export async function prepareSession(
@@ -44,10 +45,8 @@ export function openTaskWorkspace(task: TaskConfig, root: string, signal?: Abort
       root,
       extensions: ['.ts', '.json', '.md'],
       writablePaths: task.writablePaths,
-      check: {
-        executable: process.execPath,
-        args: ['--import', import.meta.resolve('tsx'), task.checkScript, root],
-      },
+      // 【修改】为新任务与恢复任务应用同一个验收执行策略。
+      check: createCheckCommand(task, root),
     },
     signal,
   );

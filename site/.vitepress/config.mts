@@ -64,6 +64,7 @@ export default defineConfig({
         { text: '33 让验收等待跨进程批准', link: '/guide/33-check-approval' },
         { text: '34 给 Coding Agent 接入双文件调查工具', link: '/guide/34-source-pair' },
         { text: '35 用 MCP 接入进程外的发票规则', link: '/guide/35-invoice-mcp' },
+        { text: '36 限制验收进程写文件和使用网络', link: '/guide/36-check-isolation' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },

@@ -1,0 +1,7 @@
+{
+  "source": "../workspace-review",
+  "prompt": "从 src/main.ts 调查发票重复折扣，按 README 修复实际实现，只改获准文件。使用 run_check 执行只读离线验收，并按真实证据报告结果。",
+  "writablePaths": ["src/checkout/invoice.ts"],
+  "checkScript": "./check-invoice.mjs",
+  "checkIsolation": "macos-offline-readonly"
+}

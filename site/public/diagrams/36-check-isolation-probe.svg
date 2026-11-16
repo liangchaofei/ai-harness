@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 207" role="img" aria-labelledby="title">
+<title id="title">同一脚本验证系统能力差异</title>
+<defs><marker id="end" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#465470"/></marker></defs>
+<rect width="880" height="207" rx="16" fill="#f3f5fa"/>
+<g font-family="system-ui, PingFang SC, sans-serif" fill="#192642">
+<text x="28" y="49" font-size="25" font-weight="700">同一脚本验证系统能力差异</text>
+<rect x="28" y="80" width="248" height="71" rx="11" fill="#ffffff" stroke="#aab3c2" stroke-width="2"/><text x="152" y="110" font-size="20" font-weight="700" text-anchor="middle">普通 Node</text><text x="152" y="135" font-size="15" text-anchor="middle">读取成功 · 允许写入和监听</text><path d="M280 116 H310" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="316" y="80" width="248" height="71" rx="11" fill="#e8edff" stroke="#4d5db7" stroke-width="2"/><text x="440" y="110" font-size="20" font-weight="700" text-anchor="middle">受约束的 Node</text><text x="440" y="135" font-size="15" text-anchor="middle">读取成功 · 两项返回 EPERM</text><path d="M568 116 H598" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="604" y="80" width="248" height="71" rx="11" fill="#ffffff" stroke="#aab3c2" stroke-width="2"/><text x="728" y="110" font-size="20" font-weight="700" text-anchor="middle">正式发票任务</text><text x="728" y="135" font-size="15" text-anchor="middle">修复后五项验收正常通过</text>
+<text x="28" y="182" font-size="16">探测用实际文件和回环端口。固定模型只用于完整交付路径。</text>
+</g></svg>
