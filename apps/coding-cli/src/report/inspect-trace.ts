@@ -1,10 +1,18 @@
-// 【新增文件】离线读取第 37 篇的 JSONL，按每次运行输出有证据的诊断。
+// 离线读取第 37 篇的 JSONL，按每次运行输出有证据的诊断。
 import { constants } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { z } from 'zod';
 
 const MAX_TRACE_BYTES = 256 * 1024;
 const count = z.number().int().nonnegative();
+const status = z.enum(['answered', 'callLimit', 'truncated', 'emptyAnswer', 'failed', 'cancelled', 'timedOut', 'toolLimit']);
+// 【新增】可选扩展字段。历史轨迹缺省它，表示子运行计数未知。
+const childSummary = z.object({
+  childRunId: z.string().min(1),
+  status,
+  modelCalls: count.max(3),
+  toolCalls: count.max(2),
+});
 const envelope = z.object({
   version: z.literal(1),
   runId: z.string().min(1),
@@ -26,9 +34,10 @@ const row = z.union([
   }),
   envelope.extend({
     type: z.literal('run_end'),
-    status: z.enum(['answered', 'callLimit', 'truncated', 'emptyAnswer', 'failed', 'cancelled', 'timedOut', 'toolLimit']),
+    status,
     modelCalls: count,
     toolCalls: count,
+    childRuns: z.array(childSummary).max(1).optional(),
   }),
   // 这些事件参与运行顺序检查，但不用于本篇的停止归因。
   envelope.extend({
@@ -116,6 +125,12 @@ function summarizeRun(events: Array<z.infer<typeof row>>) {
     return { ...base, evidence: 'inconsistent' as const, status: end.status, toolCalls: end.toolCalls };
   }
 
+  // 【新增】子运行必须与父运行身份不同，且父段有委派请求的处理证据。
+  if (end.childRuns?.some((child) => child.childRunId === end.runId) ||
+      (end.childRuns?.length && !starts.some((event) => event.toolName === 'delegate_entry_review'))) {
+    return { ...base, evidence: 'inconsistent' as const, status: end.status, toolCalls: end.toolCalls };
+  }
+
   const startsInLastResponse = starts.filter((event) => event.modelCall === end.modelCalls).length;
   const lastBatch = lastResponse?.modelCall === end.modelCalls && lastResponse.stopReason === 'toolUse'
     ? { requested: lastResponse.toolCallCount, started: startsInLastResponse }
@@ -133,6 +148,11 @@ function summarizeRun(events: Array<z.infer<typeof row>>) {
     status: end.status,
     modelCalls: end.modelCalls,
     toolCalls: end.toolCalls,
+    ...(end.childRuns === undefined ? {} : {
+      childRuns: end.childRuns,
+      totalModelCalls: end.modelCalls + end.childRuns.reduce((sum, child) => sum + child.modelCalls, 0),
+      totalToolCalls: end.toolCalls + end.childRuns.reduce((sum, child) => sum + child.toolCalls, 0),
+    }),
     ...(lastBatch ? { lastBatch } : {}),
     ...(skippedByToolLimit !== undefined ? { skippedByToolLimit } : {}),
   };

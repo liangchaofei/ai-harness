@@ -44,14 +44,14 @@ export function runSession(
   if (session.plan) {
     tools.push(session.plan.tool);
   }
-  // 【修改】两种调查扩展都依赖同一副本的只读工具。
+  // 两种调查扩展都依赖同一副本的只读工具。
   if (task.extension === 'source-pair' || task.extension === 'entry-review') {
     const read = tools.find((tool) => tool.name === 'read_file');
     if (!read) {
       throw new Error('调查扩展需要工作区读取工具。');
     }
     tools.push(task.extension === 'entry-review'
-      ? createEntryReviewTool(read, callModel)
+      ? createEntryReviewTool(read, callModel, inputOptions.onChildRun)
       : createSourcePairTool(read.execute));
   }
 

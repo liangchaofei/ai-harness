@@ -1,11 +1,16 @@
-// 【新增文件】以固定父子响应观察汇合、验收和只读边界。
+// 以固定父子响应观察汇合、验收和只读边界。
 import { runCli } from '../../apps/coding-cli/src/main';
 
 const mode = process.argv[2] ?? 'repair';
-if (mode !== 'repair' && mode !== 'deny-write') {
-  throw new Error('用法：main.ts repair|deny-write');
+// 【修改】direct 用同一任务自行读取入口，可选路径按原 CLI 写入轨迹。
+if (mode !== 'repair' && mode !== 'deny-write' && mode !== 'direct') {
+  throw new Error('用法：main.ts repair|deny-write|direct [新轨迹文件]');
 }
 const args = ['--task', 'fixtures/code-tasks/route-delegated.json'];
+const traceFile = process.argv[3];
+if (traceFile) {
+  args.push('--trace-file', traceFile);
+}
 if (mode === 'deny-write') {
   args.push('--read-only');
 }
@@ -44,11 +49,20 @@ process.exitCode = await runCli(args, () => {
 
     parentTurn += 1;
     if (parentTurn === 1) {
+      if (mode === 'direct') {
+        return request('parent_entry', 'read_file', { path: 'src/main.ts' });
+      }
       return request('parent_delegate', 'delegate_entry_review', { entry: 'src/main.ts' });
     }
     if (parentTurn === 2) {
       if (feedback?.role !== 'toolResult' || feedback.isError) {
-        throw new Error('父运行没有收到委派反馈。');
+        throw new Error('父运行没有收到入口调查反馈。');
+      }
+      if (mode === 'direct') {
+        if (!feedback.content.includes('./routing/normalize')) {
+          throw new Error('直接调查未找到实际入口。');
+        }
+        return request('parent_verify', 'read_file', { path: edit.path });
       }
       const child = JSON.parse(feedback.content);
       if (child.status !== 'answered' || !child.childRunId) {

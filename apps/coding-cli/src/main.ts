@@ -17,6 +17,7 @@ import { inspectRunTrace } from './report/inspect-trace';
 import { runEvalSuite } from './eval/run-suite';
 import { compareEvalReports } from './eval/compare-reports';
 import type { CliSession } from './types/session';
+import type { ChildRunSummary } from './types/trace';
 
 /** CLI 接收退出码。观察入口可注入模型，并开启全量历史对照。 */
 export async function runCli(
@@ -44,7 +45,7 @@ export async function runCli(
       return 0;
     }
 
-    // 【新增】比较既有报告，直接返回回归门禁退出码。
+    // 比较既有报告，直接返回回归门禁退出码。
     if ('compareEval' in options) {
       phase = '评估报告比较';
       const { baseline, candidate } = options.compareEval;
@@ -147,7 +148,12 @@ export async function runCli(
     }
 
     phase = '运行与报告';
+    // 【新增】首段与追问共用观察器，但每次 run_start 清空本段的子计数。
+    const childRuns: ChildRunSummary[] = [];
     const onEvent: RunEventListener = async (event) => {
+      if (event.type === 'run_start') {
+        childRuns.length = 0;
+      }
       printProgress(event);
       if (
         event.type === 'tool_end' &&
@@ -157,11 +163,14 @@ export async function runCli(
       ) {
         printBlock('任务计划（模型声明）', session.plan.read());
       }
-      await trace?.append(event);
+      await trace?.append(event, event.type === 'run_end' ? childRuns : undefined);
     };
 
     const runOptions: RunInputOptions = {
       fullHistory,
+      onChildRun: (summary) => {
+        childRuns.push(summary);
+      },
       ...(invoicePolicy ? { invoicePolicyTool: invoicePolicy.tool } : {}),
       ...(options.readOnly ? { readOnly: true } : {}),
       ...(options.approveTools ? { approveTools: true } : {}),

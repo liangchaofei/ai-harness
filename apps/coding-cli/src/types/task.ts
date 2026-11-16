@@ -1,6 +1,7 @@
 // 终端参数与已解析任务的应用契约。
 import type { Message } from '@ai-harness/model';
 import type { ExecutableTool } from '@ai-harness/runtime';
+import type { ChildRunSummary } from './trace';
 
 /** loadTaskMemory 选中的一条旧记录，由 runSession 转成本轮输入中的参考消息。 */
 export interface TaskMemory {
@@ -105,7 +106,7 @@ export interface TaskConfig {
   checkScript: string;
   /** 仅约束验收子进程的写入和网络。省略时沿用本地执行。 */
   checkIsolation?: 'macos-offline-readonly';
-  /** 【修改】操作者选择的扩展。entry-review 启用有限的只读委派，省略时沿用原工具。 */
+  /** 操作者选择的扩展。entry-review 启用有限的只读委派，省略时沿用原工具。 */
   extension?: 'source-pair' | 'invoice-policy-mcp' | 'entry-review';
   /** loadTask 已选中的外部笔记。未配置或未命中时省略。 */
   memory?: TaskMemory;
@@ -127,4 +128,6 @@ export interface RunInputOptions {
   deferCheck?: boolean;
   /** CLI 已接通的规则工具，由同一任务的各个运行段复用。 */
   invoicePolicyTool?: ExecutableTool;
+  /** 【新增】接收实际子运行的终态，给父轨迹记录独立的计数。 */
+  onChildRun?: (summary: ChildRunSummary) => void;
 }
