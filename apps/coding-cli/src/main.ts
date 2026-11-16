@@ -98,7 +98,12 @@ export async function runCli(
       }
     };
 
-    const first = await runSession(task, session, callModel, controller.signal, onEvent, { fullHistory });
+    const runOptions: RunInputOptions = {
+      fullHistory,
+      ...(options.readOnly ? { readOnly: true } : {}),
+      ...(options.approveTools ? { approveTools: true } : {}),
+    };
+    const first = await runSession(task, session, callModel, controller.signal, onEvent, runOptions);
     // 【新增】首段落盘之后才启动追问。
     if (logPath) {
       phase = '会话记录';
@@ -117,7 +122,7 @@ export async function runCli(
       });
       const nextInput: RunInputOptions = {
         messages: [...first.messages, { role: 'user', content: options.followUp }],
-        fullHistory,
+        ...runOptions,
       };
       result = await runSession(task, session, callModel, controller.signal, onEvent, nextInput);
       if (logPath) {
