@@ -19,9 +19,9 @@ interface PendingCheck {
   workspace: string;
   /** 写入检查点时，副本受跟踪文本范围的内容指纹。 */
   revision: string;
-  /** 任务来源、可写路径、验收脚本位置和脚本正文的指纹。 */
+  /** 任务来源、可写路径、验收脚本位置、正文与显式执行策略的指纹。 */
   taskKey: string;
-  /** 【新增】写入 true 才需要人工决定。旧检查点没有该字段。 */
+  /** 写入 true 才需要人工决定。旧检查点没有该字段。 */
   requiresApproval?: true;
 }
 
@@ -42,6 +42,8 @@ async function taskKey(task: TaskConfig, signal?: AbortSignal): Promise<string> 
     task.writablePaths,
     task.checkScript,
     script,
+    // 【新增】只为启用隔离的新任务追加策略，旧检查点的摘要仍可用。
+    ...(task.checkIsolation ? [task.checkIsolation] : []),
   ])).digest('hex');
 }
 
@@ -99,7 +101,7 @@ async function openPendingCheck(path: string, task: TaskConfig, signal?: AbortSi
   return { checkpointPath, checkpointKey, entry, session };
 }
 
-/** 【新增】先核对任务和副本，再写入操作者对这一个待验收动作的决定。 */
+/** 先核对任务和副本，再写入操作者对这一个待验收动作的决定。 */
 export async function decidePendingCheck(
   path: string,
   task: TaskConfig,
@@ -132,7 +134,7 @@ export async function inspectPendingCheck(path: string, task: TaskConfig, signal
 /** 先确认副本和任务，再占用检查点并执行一次原有验收。 */
 export async function resumePendingCheck(path: string, task: TaskConfig, signal?: AbortSignal) {
   const { checkpointPath, checkpointKey, entry, session } = await openPendingCheck(path, task, signal);
-  // 【新增】等待或拒绝时，在创建 .started 前退出。
+  // 等待或拒绝时，在创建 .started 前退出。
   if (entry.requiresApproval) {
     const approval = await readCheckApproval(checkpointPath, checkpointKey, signal);
     if (approval !== 'approved') {
