@@ -10,3 +10,6 @@ export type { CodeTaskRunner, CodeTaskRunOptions, CodeTaskDelivery } from './typ
 
 // 【新增】宿主显式传入模型服务配置。
 export { createConfiguredModelCall } from './configured-model';
+
+// 【新增】两种宿主复用执行前批准规则，交互由应用决定。
+export { wrapToolsWithApproval, type ToolApprovalRequest } from './tool-approval';

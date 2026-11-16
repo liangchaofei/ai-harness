@@ -1,7 +1,6 @@
-// 【新增文件】只在主进程读取配置，返回给 Runtime 的模型回调。
+// 只在主进程读取配置，返回给 Runtime 的模型回调。
 import { readFile } from 'node:fs/promises';
 import { parseEnv } from 'node:util';
-import { setTimeout as delay } from 'node:timers/promises';
 import { createConfiguredModelCall, type ModelCall } from '@ai-harness/harness';
 import type { DesktopTask } from './tasks';
 
@@ -24,16 +23,18 @@ export async function selectModel(mode: 'fixed' | 'live', task: DesktopTask): Pr
   }
 
   let turn = 0;
-  return async (_context, _delta, signal) => {
+  return async ({ messages }) => {
     turn += 1;
+    const feedback = messages.at(-1);
+    if (feedback?.role === 'toolResult' && feedback.isError) {
+      return { role: 'assistant', content: '本次动作未执行成功，已停止。', stopReason: 'stop', toolCalls: [] };
+    }
     if (turn === 1) {
       return request('edit-file', 'replace_text', {
         path: task.file, oldText: task.oldText, newText: task.newText,
       });
     }
     if (turn === 2) {
-      // 留出可操作的取消窗口，只影响固定响应。
-      await delay(1_200, undefined, { signal });
       return request('check-file', 'run_check', {});
     }
     return { role: 'assistant', content: '请查看验收结果。', stopReason: 'stop', toolCalls: [] };

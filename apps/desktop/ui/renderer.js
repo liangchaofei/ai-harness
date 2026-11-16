@@ -13,6 +13,45 @@ const historyStatus = document.querySelector('#history-status');
 const historyCheckDetail = document.querySelector('#history-check-detail');
 const historyProgress = document.querySelector('#history-progress');
 const historyDiff = document.querySelector('#history-diff');
+const approvalPanel = document.querySelector('#approval');
+const approvalTool = document.querySelector('#approval-tool');
+const approvalArgs = document.querySelector('#approval-args');
+const approvalMessage = document.querySelector('#approval-message');
+const approve = document.querySelector('#approve');
+const deny = document.querySelector('#deny');
+let pendingApproval = null;
+
+function showApproval(request) {
+  pendingApproval = request;
+  approvalPanel.hidden = request === null;
+  approvalTool.textContent = request?.toolName === 'replace_text' ? '修改文件' : '运行验收';
+  approvalArgs.textContent = request?.argumentsText ?? '';
+  approvalMessage.textContent = '';
+  approve.disabled = deny.disabled = request === null;
+}
+
+async function decideApproval(allowed) {
+  const request = pendingApproval;
+  if (!request) {
+    return;
+  }
+  approve.disabled = deny.disabled = true;
+  try {
+    if (!await window.task.decide(request.id, allowed) && pendingApproval === request) {
+      showApproval(null);
+    }
+  } catch (error) {
+    if (pendingApproval === request) {
+      approvalMessage.textContent = error.message;
+      approve.disabled = deny.disabled = false;
+    }
+  }
+}
+
+approve.addEventListener('click', () => { void decideApproval(true); });
+deny.addEventListener('click', () => { void decideApproval(false); });
+const unsubscribeApproval = window.task.onApproval(showApproval);
+window.addEventListener('pagehide', unsubscribeApproval, { once: true });
 
 modelMode.addEventListener('change', () => {
   modelNote.hidden = modelMode.value !== 'live';
@@ -45,6 +84,7 @@ start.addEventListener('click', async () => {
   } catch (error) {
     status.textContent = error.message;
   } finally {
+    showApproval(null);
     start.disabled = false;
     taskId.disabled = false;
     modelMode.disabled = false;
@@ -62,7 +102,7 @@ cancel.addEventListener('click', async () => {
   }
 });
 
-// 【新增】历史读取与运行中的面板互不覆盖。
+// 历史读取与运行中的面板互不覆盖。
 let historyRead = 0;
 const taskLabels = { total: '总价计算', route: '路径规范化' };
 

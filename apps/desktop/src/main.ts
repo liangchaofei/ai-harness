@@ -2,6 +2,7 @@
 import { app, BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createDesktopApproval } from './approval';
 import { runDesktopTask } from './run-task';
 import { DesktopModelConfigurationError, selectModel } from './model';
 import { pickTask } from './tasks';
@@ -10,7 +11,11 @@ import type { DesktopTaskEvent, DesktopTaskResult } from './types/task';
 
 const page = new URL('../ui/index.html', import.meta.url);
 let window: BrowserWindow | undefined;
-let active: { controller: AbortController; completed: Promise<DesktopTaskResult> } | undefined;
+let active: {
+  controller: AbortController;
+  completed: Promise<DesktopTaskResult>;
+  approval: ReturnType<typeof createDesktopApproval>;
+} | undefined;
 let waitingToQuit = false;
 
 /** 只接受当前窗口中可信本地页面的顶层帧。 */
@@ -35,7 +40,12 @@ ipcMain.handle('task:start', async (event, taskId: unknown, modelMode: unknown) 
 
   const sender = event.sender;
   const controller = new AbortController();
-  // 【新增】本批只保存已有的应用进度摘要。
+  const approval = createDesktopApproval((request) => {
+    if (!sender.isDestroyed()) {
+      sender.send('task:approval', request);
+    }
+  });
+  // 本批只保存已有的应用进度摘要。
   const events: DesktopTaskEvent[] = [];
   const completed = selectModel(modelMode, task).then((callModel) =>
     runDesktopTask(task, callModel, controller.signal, (update) => {
@@ -43,12 +53,12 @@ ipcMain.handle('task:start', async (event, taskId: unknown, modelMode: unknown) 
       if (!sender.isDestroyed()) {
         sender.send('task:progress', update);
       }
-    }),
+    }, approval.request),
   ).then(async (result) => {
     await saveRun(historyDirectory(), { taskId: task.id, modelMode, events, result });
     return result;
   });
-  active = { controller, completed };
+  active = { controller, completed, approval };
   try {
     return await completed;
   } catch (error) {
@@ -61,12 +71,18 @@ ipcMain.handle('task:start', async (event, taskId: unknown, modelMode: unknown) 
   }
 });
 
+// 【新增】只有同一窗口能提交当前请求的决定。
+ipcMain.handle('task:decide', (event, id: unknown, allowed: unknown) => {
+  verifySender(event);
+  return active?.approval.decide(id, allowed) ?? false;
+});
+
 ipcMain.handle('task:cancel', (event) => {
   verifySender(event);
   active?.controller.abort();
 });
 
-// 【新增】读取历史同样验证来源，目录始终由主进程选择。
+// 读取历史同样验证来源，目录始终由主进程选择。
 function historyDirectory() {
   return join(app.getPath('userData'), 'task-history');
 }
@@ -112,6 +128,7 @@ void app.whenReady().then(async () => {
   window.on('closed', () => {
     window = undefined;
   });
+  window.webContents.on('render-process-gone', () => active?.controller.abort());
   window.webContents.on('will-navigate', (event) => event.preventDefault());
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   await window.loadFile(fileURLToPath(page));

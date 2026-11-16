@@ -38,3 +38,13 @@ export interface DesktopRunRecord {
   events: DesktopTaskEvent[];
   result: DesktopTaskResult;
 }
+
+/** 【新增】只供窗口展示与决定，审批参数不写入审阅历史。 */
+export interface DesktopApproval {
+  /** 主进程为该请求生成的唯一 ID。 */
+  id: string;
+  /** 需要批准的具体动作。 */
+  toolName: 'replace_text' | 'run_check';
+  /** 展示给用户审阅的参数文本。 */
+  argumentsText: string;
+}

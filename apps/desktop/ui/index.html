@@ -33,6 +33,16 @@
         <button id="cancel" type="button" disabled>取消</button>
       </div>
     </header>
+    <section id="approval" class="approval" aria-labelledby="approval-heading" hidden>
+      <h2 id="approval-heading">等待批准</h2>
+      <p id="approval-tool"></p>
+      <pre id="approval-args"></pre>
+      <p id="approval-message" role="status"></p>
+      <div class="actions">
+        <button id="approve" type="button">批准本次</button>
+        <button id="deny" type="button">拒绝本次</button>
+      </div>
+    </section>
     <div class="panels">
       <section aria-labelledby="progress-heading">
         <h2 id="progress-heading">运行记录</h2>
