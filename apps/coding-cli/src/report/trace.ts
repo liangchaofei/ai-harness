@@ -1,9 +1,10 @@
-// 【新增文件】将 Runtime 的结构化事件写成独立诊断记录。
+// 将 Runtime 的结构化事件写成独立诊断记录。
 import { open } from 'node:fs/promises';
 import type { RunEvent } from '@ai-harness/runtime';
+import type { ChildRunSummary } from '../types/trace';
 
 /** 按事件逐项挑选字段，文字流和任意新增字段不会自动入盘。 */
-function traceRecord(event: RunEvent) {
+function traceRecord(event: RunEvent, childRuns?: readonly ChildRunSummary[]) {
   const common = {
     version: 1,
     runId: event.runId,
@@ -52,6 +53,10 @@ function traceRecord(event: RunEvent) {
         modelCalls: event.modelCalls,
         toolCalls: event.toolCalls,
         failureCode: event.failureCode,
+        // 【新增】明确投影子统计，缺省字段为历史记录保留语义。
+        childRuns: childRuns?.map(({ childRunId, status, modelCalls, toolCalls }) => ({
+          childRunId, status, modelCalls, toolCalls,
+        })),
       };
     default:
       return undefined;
@@ -62,8 +67,8 @@ function traceRecord(event: RunEvent) {
 export async function openRunTrace(path: string) {
   const file = await open(path, 'wx', 0o600);
   return {
-    async append(event: RunEvent) {
-      const record = traceRecord(event);
+    async append(event: RunEvent, childRuns?: readonly ChildRunSummary[]) {
+      const record = traceRecord(event, childRuns);
       if (record) {
         await file.appendFile(JSON.stringify(record) + '\n', 'utf8');
       }

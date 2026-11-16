@@ -1,8 +1,13 @@
-// 【新增文件】将一次只读入口调查委派给独立的 Runtime 运行段。
+// 将一次只读入口调查委派给独立的 Runtime 运行段。
 import { runAgent, ToolExecutionError, type ExecutableTool, type ModelCall } from '@ai-harness/runtime';
+import type { ChildRunSummary } from '../types/trace';
 
 /** 应用只注入当前副本的 read_file 执行入口。每个父运行段最多发起一次。 */
-export function createEntryReviewTool(read: ExecutableTool, callModel: ModelCall): ExecutableTool {
+export function createEntryReviewTool(
+  read: ExecutableTool,
+  callModel: ModelCall,
+  onChildRun?: (summary: ChildRunSummary) => void,
+): ExecutableTool {
   if (read.name !== 'read_file') {
     throw new Error('入口调查需要工作区的 read_file 工具。');
   }
@@ -40,14 +45,19 @@ export function createEntryReviewTool(read: ExecutableTool, callModel: ModelCall
         maxToolCalls: 2,
         timeoutMs: 8_000,
       });
-      signal?.throwIfAborted();
-
-      // 仅返回必要观察，不把子历史复制进父上下文。
-      return JSON.stringify({
+      // 【新增】先记录实际结束的子运行，父取消时也能保留计数。
+      const summary: ChildRunSummary = {
         childRunId: child.runId,
         status: child.status,
         modelCalls: child.modelCalls,
         toolCalls: child.toolCalls,
+      };
+      onChildRun?.(summary);
+      signal?.throwIfAborted();
+
+      // 仅返回必要观察，不把子历史复制进父上下文。
+      return JSON.stringify({
+        ...summary,
         ...(child.status === 'answered' ? { finding: child.answer.content.slice(0, 1_000) } : {}),
       });
     },
