@@ -1,0 +1,29 @@
+{
+  "name": "ai-harness-workspace",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "examples/*",
+    "site"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "docs:dev": "npm run dev --workspace @ai-harness/site",
+    "docs:build": "npm run build --workspace @ai-harness/site",
+    "docs:preview": "npm run preview --workspace @ai-harness/site",
+    "build": "npm run build --workspace @ai-harness/model && npm run build --workspace @ai-harness/runtime && npm run build --workspace @ai-harness/coding-tools && npm run build --workspace @ai-harness/harness && npm run build --workspace @ai-harness/coding-cli",
+    "check": "npm run build && tsc --noEmit",
+    "start": "npm run build && node --env-file=.env --import tsx examples/run.ts",
+    "debug": "npm run build && node --enable-source-maps --env-file=.env --inspect-brk --import tsx examples/run.ts"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "tsup": "8.5.0"
+  }
+}

@@ -75,6 +75,9 @@ export default defineConfig({
         { text: '42 用同一任务对照直接调查与只读委派', link: '/guide/42-delegation-cost' },
         { text: '43 让多项只读调查限量并发，再按顺序汇合', link: '/guide/43-parallel-review' },
       ] },
+      { text: '第八阶段 · 框架收敛与桌面应用', items: [
+        { text: '44 让仓库外的应用安装并使用 Harness', link: '/guide/44-harness-package' },
+      ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },
     docFooter: { prev: '上一篇', next: '下一篇' },
