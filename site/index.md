@@ -81,3 +81,5 @@ features:
 [第 33 篇：让验收等待跨进程批准](/guide/33-check-approval)保存对一次具体验收的决定，另起进程继续。
 
 [第 34 篇：给 Coding Agent 接入双文件调查工具](/guide/34-source-pair)用发票任务验证可选工具、工作区约束和现有交付流程。
+
+[第 35 篇：用 MCP 接入进程外的发票规则](/guide/35-invoice-mcp)接通真实 stdio 服务，沿用现有工具执行与交付验收。

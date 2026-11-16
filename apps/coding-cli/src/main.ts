@@ -4,6 +4,7 @@ import type { ModelCall, RunEventListener } from '@ai-harness/runtime';
 import { parseArgs, helpText } from './config/args';
 import { loadTask } from './config/task';
 import { createModelCall } from './model';
+import { openInvoicePolicy } from './invoice-policy-mcp';
 import { decidePendingCheck, inspectPendingCheck, resumePendingCheck, savePendingCheck } from './session/checkpoint';
 import { prepareSession } from './session/prepare';
 import { appendRun, createSessionLog } from './session/session-log';
@@ -27,6 +28,7 @@ export async function runCli(
     }
   };
   let session: CliSession | undefined;
+  let invoicePolicy: Awaited<ReturnType<typeof openInvoicePolicy>> | undefined;
   let phase = '参数';
   process.on('SIGINT', onInterrupt);
 
@@ -57,7 +59,7 @@ export async function runCli(
     phase = '任务配置';
     const task = await loadTask(options.taskFile, controller.signal);
 
-    // 【新增】批准命令只保存决定，之后由独立的恢复调用执行。
+    // 批准命令只保存决定，之后由独立的恢复调用执行。
     if (options.decideCheck) {
       phase = '记录验收决定';
       const { path, decision } = options.decideCheck;
@@ -98,6 +100,12 @@ export async function runCli(
       logPath = await createSessionLog(options.sessionLog, session.root);
     }
 
+    // 【新增】准备模型循环前发现规则工具，首段和追问共用连接。
+    if (task.extension === 'invoice-policy-mcp') {
+      phase = '发票规则服务连接';
+      invoicePolicy = await openInvoicePolicy(controller.signal);
+    }
+
     phase = '运行与报告';
     const onEvent: RunEventListener = (event) => {
       printProgress(event);
@@ -113,6 +121,7 @@ export async function runCli(
 
     const runOptions: RunInputOptions = {
       fullHistory,
+      ...(invoicePolicy ? { invoicePolicyTool: invoicePolicy.tool } : {}),
       ...(options.readOnly ? { readOnly: true } : {}),
       ...(options.approveTools ? { approveTools: true } : {}),
       ...(options.gateCheck ? { deferCheck: true } : {}),
@@ -170,6 +179,10 @@ export async function runCli(
     console.error(`${phase}失败；请检查配置或在对应函数断点查看原异常。`);
     return 2;
   } finally {
+    // 【新增】正常退出、异常和取消都要关闭本任务持有的连接。
+    if (invoicePolicy) {
+      await invoicePolicy.close().catch(() => console.error('关闭发票规则服务连接失败。'));
+    }
     process.off('SIGINT', onInterrupt);
     if (session) {
       console.log('工作副本保留在：', session.root);

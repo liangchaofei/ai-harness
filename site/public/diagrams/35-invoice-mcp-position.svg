@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1168 207" role="img" aria-labelledby="title">
+<title id="title">第六阶段 · 将 MCP 外部服务接进工具调用</title>
+<defs><marker id="end" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#465470"/></marker></defs>
+<rect width="1168" height="207" rx="16" fill="#f3f5fa"/>
+<g font-family="system-ui, PingFang SC, sans-serif" fill="#192642">
+<text x="28" y="49" font-size="25" font-weight="700">第六阶段 · 将 MCP 外部服务接进工具调用</text>
+<rect x="28" y="80" width="248" height="71" rx="11" fill="#ffffff" stroke="#aab3c2" stroke-width="2"/><text x="152" y="110" font-size="20" font-weight="700" text-anchor="middle">任务配置</text><text x="152" y="135" font-size="15" text-anchor="middle">invoice-policy-mcp</text><path d="M280 116 H310" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="316" y="80" width="248" height="71" rx="11" fill="#e8edff" stroke="#4d5db7" stroke-width="2"/><text x="440" y="110" font-size="20" font-weight="700" text-anchor="middle">应用工具装配</text><text x="440" y="135" font-size="15" text-anchor="middle">第 35 篇 · 建连与发现</text><path d="M568 116 H598" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="604" y="80" width="248" height="71" rx="11" fill="#e8edff" stroke="#4d5db7" stroke-width="2"/><text x="728" y="110" font-size="20" font-weight="700" text-anchor="middle">工具执行</text><text x="728" y="135" font-size="15" text-anchor="middle">第 35 篇 · 调用 MCP 服务</text><path d="M856 116 H886" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="892" y="80" width="248" height="71" rx="11" fill="#ffffff" stroke="#aab3c2" stroke-width="2"/><text x="1016" y="110" font-size="20" font-weight="700" text-anchor="middle">状态与收尾</text><text x="1016" y="135" font-size="15" text-anchor="middle">任务报告，关闭连接</text>
+<text x="28" y="182" font-size="16">Runtime 继续管理调用 ID、消息历史、取消和工具反馈。</text>
+</g></svg>
