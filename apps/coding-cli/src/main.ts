@@ -15,6 +15,7 @@ import { printProgress, printBlock } from './report/terminal';
 import { openRunTrace } from './report/trace';
 import { inspectRunTrace } from './report/inspect-trace';
 import { runEvalSuite } from './eval/run-suite';
+import { compareEvalReports } from './eval/compare-reports';
 import type { CliSession } from './types/session';
 
 /** CLI 接收退出码。观察入口可注入模型，并开启全量历史对照。 */
@@ -43,7 +44,16 @@ export async function runCli(
       return 0;
     }
 
-    // 【新增】批次逐项重用单任务入口，每项准备新的副本与运行状态。
+    // 【新增】比较既有报告，直接返回回归门禁退出码。
+    if ('compareEval' in options) {
+      phase = '评估报告比较';
+      const { baseline, candidate } = options.compareEval;
+      const { report, exitCode } = await compareEvalReports(baseline, candidate, controller.signal);
+      printBlock('评估报告比较', report);
+      return exitCode;
+    }
+
+    // 批次逐项重用单任务入口，每项准备新的副本与运行状态。
     if ('evalSuite' in options) {
       phase = '任务集评估';
       const { report, exitCode } = await runEvalSuite(

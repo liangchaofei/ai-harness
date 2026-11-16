@@ -20,9 +20,14 @@ export type CliOptions =
   | { help: true }
   | {
       help: false;
-      /** 【新增】可信任务集清单，清单内任务路径相对其目录。 */
+      /** 【新增】两份只读评估报告的路径，顺序决定差值方向。 */
+      compareEval: { baseline: string; candidate: string };
+    }
+  | {
+      help: false;
+      /** 可信任务集清单，清单内任务路径相对其目录。 */
       evalSuite: string;
-      /** 【新增】本批次要创建的新目录。 */
+      /** 本批次要创建的新目录。 */
       evalOutput: string;
     }
   | {

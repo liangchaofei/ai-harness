@@ -70,6 +70,7 @@ export default defineConfig({
         { text: '37 用结构化轨迹定位工具为什么没执行', link: '/guide/37-run-trace' },
         { text: '38 离线诊断一份 Agent 运行轨迹', link: '/guide/38-inspect-trace' },
         { text: '39 建立一组可重复运行的代码任务', link: '/guide/39-eval-suite' },
+        { text: '40 比较两次评估，定位哪项任务退化了', link: '/guide/40-compare-eval' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },
