@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 207" role="img" aria-labelledby="title">
+<title id="title">一次批量委派怎样留在父轨迹里</title>
+<defs><marker id="end" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#465470"/></marker></defs>
+<rect width="880" height="207" rx="16" fill="#f3f5fa"/>
+<g font-family="system-ui, PingFang SC, sans-serif" fill="#192642">
+<text x="28" y="49" font-size="25" font-weight="700">一次批量委派怎样留在父轨迹里</text>
+<rect x="28" y="80" width="248" height="71" rx="11" fill="#ffffff" stroke="#aab3c2" stroke-width="2"/><text x="152" y="110" font-size="20" font-weight="700" text-anchor="middle">父 run_end</text><text x="152" y="135" font-size="15" text-anchor="middle">同一父 ID 与一组子摘要</text><path d="M280 116 H310" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="316" y="80" width="248" height="71" rx="11" fill="#e8edff" stroke="#4d5db7" stroke-width="2"/><text x="440" y="110" font-size="20" font-weight="700" text-anchor="middle">离线检查</text><text x="440" y="135" font-size="15" text-anchor="middle">最多三项，子 ID 唯一</text><path d="M568 116 H598" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="604" y="80" width="248" height="71" rx="11" fill="#e8edff" stroke="#4d5db7" stroke-width="2"/><text x="728" y="110" font-size="20" font-weight="700" text-anchor="middle">计数</text><text x="728" y="135" font-size="15" text-anchor="middle">实际父次数 + 各子次数</text>
+<text x="28" y="182" font-size="16">旧文件的单子摘要与省略字段仍可读取。</text>
+</g></svg>

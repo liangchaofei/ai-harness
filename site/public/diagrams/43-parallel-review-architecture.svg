@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1168 207" role="img" aria-labelledby="title">
+<title id="title">路径任务的三个文件怎样排队</title>
+<defs><marker id="end" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#465470"/></marker></defs>
+<rect width="1168" height="207" rx="16" fill="#f3f5fa"/>
+<g font-family="system-ui, PingFang SC, sans-serif" fill="#192642">
+<text x="28" y="49" font-size="25" font-weight="700">路径任务的三个文件怎样排队</text>
+<rect x="28" y="80" width="248" height="71" rx="11" fill="#ffffff" stroke="#aab3c2" stroke-width="2"/><text x="152" y="110" font-size="20" font-weight="700" text-anchor="middle">输入三项</text><text x="152" y="135" font-size="15" text-anchor="middle">入口、README、历史实现</text><path d="M280 116 H310" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="316" y="80" width="248" height="71" rx="11" fill="#e8edff" stroke="#4d5db7" stroke-width="2"/><text x="440" y="110" font-size="20" font-weight="700" text-anchor="middle">运行中最多两项</text><text x="440" y="135" font-size="15" text-anchor="middle">先领取下标 0 与 1</text><path d="M568 116 H598" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="604" y="80" width="248" height="71" rx="11" fill="#e8edff" stroke="#4d5db7" stroke-width="2"/><text x="728" y="110" font-size="20" font-weight="700" text-anchor="middle">README 先完成</text><text x="728" y="135" font-size="15" text-anchor="middle">空闲 worker 再领取下标 2</text><path d="M856 116 H886" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="892" y="80" width="248" height="71" rx="11" fill="#ffffff" stroke="#aab3c2" stroke-width="2"/><text x="1016" y="110" font-size="20" font-weight="700" text-anchor="middle">按下标汇合</text><text x="1016" y="135" font-size="15" text-anchor="middle">回到 0、1、2 的请求顺序</text>
+<text x="28" y="182" font-size="16">队列顺序、完成顺序和汇合顺序可以不同。</text>
+</g></svg>
