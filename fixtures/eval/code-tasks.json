@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "cases": [
+    { "id": "invoice", "taskFile": "../code-tasks/invoice.json" },
+    { "id": "route", "taskFile": "../code-tasks/route.json" }
+  ]
+}

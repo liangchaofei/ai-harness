@@ -20,7 +20,14 @@ export type CliOptions =
   | { help: true }
   | {
       help: false;
-      /** 【新增】独立诊断入口只读取此轨迹文件。 */
+      /** 【新增】可信任务集清单，清单内任务路径相对其目录。 */
+      evalSuite: string;
+      /** 【新增】本批次要创建的新目录。 */
+      evalOutput: string;
+    }
+  | {
+      help: false;
+      /** 独立诊断入口只读取此轨迹文件。 */
       inspectTrace: string;
     }
   | {

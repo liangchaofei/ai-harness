@@ -95,3 +95,5 @@ model定义模型输入输出契约，适配器认识服务协议；Runtime创�
 第 37 篇在 Coding CLI 观察层将 Runtime 事件投影成 JSONL，保留 runId、sequence 与工具调用 ID。原会话日志和实际交付规则各自沿用。
 
 第 38 篇在 Coding CLI 装配之前分流轨迹文件诊断；文件和 Runtime 的报告各自提供有限证据，离线入口不会重跑任何模型或工具。
+
+第 39 篇的批次运行器逐项复用 Coding CLI，以退出码判定接受状态，以结构化轨迹记录 Runtime 计数和停止。批次报告保存在单独的新目录。

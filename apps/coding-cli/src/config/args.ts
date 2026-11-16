@@ -7,6 +7,7 @@ ai-harness --task <任务.json> --inspect-check <检查点>
 ai-harness --task <任务.json> --decide-check <检查点> <approve|deny>
 ai-harness --resume-log <文件> --follow-up <问题>
 ai-harness --inspect-trace <轨迹文件>
+ai-harness --eval-suite <清单.json> --eval-output <新目录>
 任务路径相对当前终端目录；配置内路径相对任务文件目录。
 --plan 开启实验性计划；--follow-up 在首次回答后追加一条问题。
 --read-only 只允许调查工具；--approve-tools 在修改或验收前逐次询问。
@@ -20,13 +21,23 @@ export function parseArgs(args: readonly string[]): CliOptions {
   if (args.length === 1 && args[0] === '--help') {
     return { help: true };
   }
-  // 【新增】离线诊断只接受一个路径，独立于任务参数。
+  // 离线诊断只接受一个路径，独立于任务参数。
   if (args[0] === '--inspect-trace') {
     const path = args[1];
     if (args.length !== 2 || !path?.trim() || path.startsWith('--')) {
       throw new Error('轨迹诊断只接受一个文件路径。');
     }
     return { help: false, inspectTrace: path };
+  }
+  // 【新增】评估入口只接受清单路径和一个新目录。
+  if (args[0] === '--eval-suite') {
+    const [, suite, outputFlag, output] = args;
+    if (args.length !== 4 || outputFlag !== '--eval-output' ||
+        !suite?.trim() || suite.startsWith('--') ||
+        !output?.trim() || output.startsWith('--')) {
+      throw new Error('任务集评估需要清单和新输出目录。');
+    }
+    return { help: false, evalSuite: suite, evalOutput: output };
   }
   let taskFile: string | undefined;
   let planning = false;
