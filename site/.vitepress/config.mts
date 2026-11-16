@@ -58,6 +58,9 @@ export default defineConfig({
         { text: '29 验收进程中断后，怎样核对现场', link: '/guide/29-interrupted-check' },
         { text: '30 在正式 CLI 里检查恢复证据', link: '/guide/30-inspect-checkpoint' },
       ] },
+      { text: '第六阶段 · 扩展、安全与人工介入', items: [
+        { text: '31 让 Coding Agent 在只读模式下调查代码', link: '/guide/31-read-only-policy' },
+      ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },
     docFooter: { prev: '上一篇', next: '下一篇' },
