@@ -13,6 +13,7 @@ import { runSession } from './session/run';
 import { reportSession } from './report/report';
 import { printProgress, printBlock } from './report/terminal';
 import { openRunTrace } from './report/trace';
+import { inspectRunTrace } from './report/inspect-trace';
 import type { CliSession } from './types/session';
 
 /** CLI 接收退出码。观察入口可注入模型，并开启全量历史对照。 */
@@ -38,6 +39,13 @@ export async function runCli(
     const options = parseArgs(args);
     if (options.help) {
       console.log(helpText);
+      return 0;
+    }
+
+    // 【新增】离线诊断先于模型、任务和工作副本装配。
+    if ('inspectTrace' in options) {
+      phase = '离线轨迹诊断';
+      printBlock('离线轨迹诊断', await inspectRunTrace(options.inspectTrace, controller.signal));
       return 0;
     }
 
@@ -108,7 +116,7 @@ export async function runCli(
       invoicePolicy = await openInvoicePolicy(controller.signal);
     }
 
-    // 【新增】开始循环前独占创建文件，首段和追问共用句柄。
+    // 开始循环前独占创建文件，首段和追问共用句柄。
     if (options.traceFile) {
       phase = '诊断轨迹';
       trace = await openRunTrace(options.traceFile);

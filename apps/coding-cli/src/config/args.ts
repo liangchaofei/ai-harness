@@ -6,6 +6,7 @@ ai-harness --task <任务.json> --resume-check <检查点>
 ai-harness --task <任务.json> --inspect-check <检查点>
 ai-harness --task <任务.json> --decide-check <检查点> <approve|deny>
 ai-harness --resume-log <文件> --follow-up <问题>
+ai-harness --inspect-trace <轨迹文件>
 任务路径相对当前终端目录；配置内路径相对任务文件目录。
 --plan 开启实验性计划；--follow-up 在首次回答后追加一条问题。
 --read-only 只允许调查工具；--approve-tools 在修改或验收前逐次询问。
@@ -18,6 +19,14 @@ ai-harness --resume-log <文件> --follow-up <问题>
 export function parseArgs(args: readonly string[]): CliOptions {
   if (args.length === 1 && args[0] === '--help') {
     return { help: true };
+  }
+  // 【新增】离线诊断只接受一个路径，独立于任务参数。
+  if (args[0] === '--inspect-trace') {
+    const path = args[1];
+    if (args.length !== 2 || !path?.trim() || path.startsWith('--')) {
+      throw new Error('轨迹诊断只接受一个文件路径。');
+    }
+    return { help: false, inspectTrace: path };
   }
   let taskFile: string | undefined;
   let planning = false;
@@ -56,7 +65,7 @@ export function parseArgs(args: readonly string[]): CliOptions {
       }
       sessionLog = value;
     } else if (arg === '--trace-file' && traceFile === undefined) {
-      // 【新增】路径由操作者提供，后续只允许新建文件。
+      // 路径由操作者提供，后续只允许新建文件。
       const value = args[++i];
       if (!value?.trim() || value.startsWith('--')) {
         throw new Error('诊断轨迹路径缺失。');
@@ -114,7 +123,7 @@ export function parseArgs(args: readonly string[]): CliOptions {
   if (!taskFile) {
     throw new Error('需要任务配置。');
   }
-  // 【新增】这些入口不会启动任务模型循环。
+  // 这些入口不会启动任务模型循环。
   if (traceFile && (resumeCheck || inspectCheck || decideCheck)) {
     throw new Error('诊断轨迹只支持新任务运行。');
   }

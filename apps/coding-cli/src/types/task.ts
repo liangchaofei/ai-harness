@@ -20,6 +20,11 @@ export type CliOptions =
   | { help: true }
   | {
       help: false;
+      /** 【新增】独立诊断入口只读取此轨迹文件。 */
+      inspectTrace: string;
+    }
+  | {
+      help: false;
       /** 只读接续模式使用的会话日志路径。 */
       resumeLog: string;
       /** 追加到旧历史末尾的新问题。 */
@@ -32,7 +37,7 @@ export type CliOptions =
       taskFile: string;
       /** 操作者指定的新会话记录文件，省略时只保留终端报告。 */
       sessionLog?: string;
-      /** 【新增】本次 CLI 要独占创建的 JSONL 诊断轨迹。 */
+      /** 本次 CLI 要独占创建的 JSONL 诊断轨迹。 */
       traceFile?: string;
       /** 受控交接时写入的新检查点路径。 */
       checkpoint?: string;
