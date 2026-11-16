@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 207" role="img" aria-labelledby="title">
+<title id="title">从策略名称到验收命令</title>
+<defs><marker id="end" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#465470"/></marker></defs>
+<rect width="880" height="207" rx="16" fill="#f3f5fa"/>
+<g font-family="system-ui, PingFang SC, sans-serif" fill="#192642">
+<text x="28" y="49" font-size="25" font-weight="700">从策略名称到验收命令</text>
+<rect x="28" y="80" width="248" height="71" rx="11" fill="#ffffff" stroke="#aab3c2" stroke-width="2"/><text x="152" y="110" font-size="20" font-weight="700" text-anchor="middle">已校验的策略名</text><text x="152" y="135" font-size="15" text-anchor="middle">macos-offline-readonly</text><path d="M280 116 H310" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="316" y="80" width="248" height="71" rx="11" fill="#e8edff" stroke="#4d5db7" stroke-width="2"/><text x="440" y="110" font-size="20" font-weight="700" text-anchor="middle">固定启动程序</text><text x="440" y="135" font-size="15" text-anchor="middle">sandbox-exec -p + 策略</text><path d="M568 116 H598" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="604" y="80" width="248" height="71" rx="11" fill="#ffffff" stroke="#aab3c2" stroke-width="2"/><text x="728" y="110" font-size="20" font-weight="700" text-anchor="middle">原 Node 参数</text><text x="728" y="135" font-size="15" text-anchor="middle">tsx、checkScript、副本路径</text>
+<text x="28" y="182" font-size="16">进程仍读取任务源码。写文件和网络操作由固定策略拒绝。</text>
+</g></svg>

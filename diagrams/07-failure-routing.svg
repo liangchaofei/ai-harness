@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="940" viewBox="0 0 1080 940" role="img" aria-labelledby="title desc">
+<title id="title">谁创建失败信息，谁决定后续处理</title><desc id="desc">以下是独立的失败分支，不是依次发生的执行步骤。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/></marker></defs>
+<rect width="1080" height="940" fill="#f8fafc"/>
+<g font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif" fill="#0f172a">
+<text x="40" y="48" font-size="28" font-weight="700">谁创建失败信息，谁决定后续处理</text>
+<text x="40" y="86" font-size="19" fill="#475569">以下是独立的失败分支，不是依次发生的执行步骤。</text>
+<rect x="40" y="118" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="152" font-size="23" font-weight="700">模型 HTTP 等待：requestJson</text>
+<text x="62" y="185" font-size="20">fetch 等待失败 → ModelCallError(transport)；非成功状态 → http。</text>
+<text x="62" y="215" font-size="20">响应体 JSON 语法不符 → protocol；读取中断 → transport。</text>
+<rect x="40" y="268" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="302" font-size="23" font-weight="700">模型入口：complete</text>
+<text x="62" y="335" font-size="20">配置检查异常 → configuration；消息编码或解码异常 → protocol。</text>
+<text x="62" y="365" font-size="20">保留已分类的 ModelCallError；cause 只供本地调试。</text>
+<rect x="40" y="418" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="452" font-size="23" font-weight="700">工具执行器：executeToolBatch</text>
+<text x="62" y="485" font-size="20">未知工具 / JSON / schema 不符，或工具主动报告已知失败。</text>
+<text x="62" y="515" font-size="20">→ code/message 文本＋isError = true；整批完成后交回下一轮。</text>
+<rect x="40" y="568" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="602" font-size="23" font-weight="700">工具准备或未知执行异常</text>
+<text x="62" y="635" font-size="20">无效清单 → tool_configuration；无效批次 ID → tool_protocol。</text>
+<text x="62" y="665" font-size="20">未知执行异常 → tool_execution，并带回已经完成的结果。</text>
+<rect x="40" y="718" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="752" font-size="23" font-weight="700">应用：读取 RunResult，不解析任意异常正文</text>
+<text x="62" y="785" font-size="20">失败时看 status / phase / failure.code，HTTP 状态码按需读取。</text>
+<text x="62" y="815" font-size="20">不整体打印 error / cause；分类没有自动重试、回滚或降级的含义。</text>
+<text x="40" y="888" font-size="18" fill="#475569">只有已知工具失败进入模型反馈；模型调用失败和未知工具异常都使当前运行停止。</text></g></svg>

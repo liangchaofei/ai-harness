@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 207" role="img" aria-labelledby="title">
+<title id="title">第七阶段 · 将同一 Agent 用在一组任务上</title>
+<defs><marker id="end" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#465470"/></marker></defs>
+<rect width="880" height="207" rx="16" fill="#f3f5fa"/>
+<g font-family="system-ui, PingFang SC, sans-serif" fill="#192642">
+<text x="28" y="49" font-size="25" font-weight="700">第七阶段 · 将同一 Agent 用在一组任务上</text>
+<rect x="28" y="80" width="248" height="71" rx="11" fill="#ffffff" stroke="#aab3c2" stroke-width="2"/><text x="152" y="110" font-size="20" font-weight="700" text-anchor="middle">可信任务集</text><text x="152" y="135" font-size="15" text-anchor="middle">发票与路径各一项</text><path d="M280 116 H310" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="316" y="80" width="248" height="71" rx="11" fill="#ffffff" stroke="#aab3c2" stroke-width="2"/><text x="440" y="110" font-size="20" font-weight="700" text-anchor="middle">单任务循环</text><text x="440" y="135" font-size="15" text-anchor="middle">每项新副本，实际执行和验收</text><path d="M568 116 H598" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="604" y="80" width="248" height="71" rx="11" fill="#e8edff" stroke="#4d5db7" stroke-width="2"/><text x="728" y="110" font-size="20" font-weight="700" text-anchor="middle">批次报告</text><text x="728" y="135" font-size="15" text-anchor="middle">本篇 · 汇总结果和计数</text>
+<text x="28" y="182" font-size="16">每项仍走正式 CLI 的任务准备、运行和交付判断。</text>
+</g></svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 207" role="img" aria-labelledby="title">
+<title id="title">第八阶段 · 运行后保存并审阅桌面历史</title>
+<defs><marker id="end" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#465470"/></marker></defs>
+<rect width="880" height="207" rx="16" fill="#f3f5fa"/>
+<g font-family="system-ui, PingFang SC, sans-serif" fill="#192642">
+<text x="28" y="49" font-size="25" font-weight="700">第八阶段 · 运行后保存并审阅桌面历史</text>
+<rect x="28" y="80" width="248" height="71" rx="11" fill="#ffffff" stroke="#aab3c2" stroke-width="2"/><text x="152" y="110" font-size="20" font-weight="700" text-anchor="middle">Harness 运行</text><text x="152" y="135" font-size="15" text-anchor="middle">返回当前副本审阅结果</text><path d="M280 116 H310" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="316" y="80" width="248" height="71" rx="11" fill="#e8edff" stroke="#4d5db7" stroke-width="2"/><text x="440" y="110" font-size="20" font-weight="700" text-anchor="middle">主进程存档</text><text x="440" y="135" font-size="15" text-anchor="middle">本篇 · 记录与验收快照</text><path d="M568 116 H598" stroke="#465470" stroke-width="2" marker-end="url(#end)"/><rect x="604" y="80" width="248" height="71" rx="11" fill="#e8edff" stroke="#4d5db7" stroke-width="2"/><text x="728" y="110" font-size="20" font-weight="700" text-anchor="middle">重新打开桌面</text><text x="728" y="135" font-size="15" text-anchor="middle">按记录 ID 查看历史</text>
+<text x="28" y="182" font-size="16">临时副本清理后，审阅只读取已保存证据。</text>
+</g></svg>

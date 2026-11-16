@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="940" viewBox="0 0 1080 940" role="img" aria-labelledby="title desc">
+<title id="title">一次网络读取，不等于一帧或一条模型消息</title><desc id="desc">readSse 只还原帧；服务适配器随后解释帧里的 JSON。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/></marker></defs>
+<rect width="1080" height="940" fill="#f8fafc"/>
+<g font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif" fill="#0f172a">
+<text x="40" y="48" font-size="28" font-weight="700">一次网络读取，不等于一帧或一条模型消息</text>
+<text x="40" y="86" font-size="19" fill="#475569">readSse 只还原帧；服务适配器随后解释帧里的 JSON。</text>
+<rect x="40" y="118" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="152" font-size="23" font-weight="700">1 reader.read：收到字节</text>
+<text x="62" y="185" font-size="20">字节块 A 可以停在中文字符中间，字节块 B 再补齐。</text>
+<text x="62" y="215" font-size="20">一块可以包含半帧，也可以包含多帧。</text>
+<path d="M 540 247 L 540 264" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="268" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="302" font-size="23" font-weight="700">2 TextDecoder：跨读取还原 UTF-8</text>
+<text x="62" y="335" font-size="20">保留残缺字节；已经解码的文字追加到 buffer。</text>
+<text x="62" y="365" font-size="20">无效编码拒绝；本次响应累计上限为 2 Mi 字符单元。</text>
+<path d="M 540 397 L 540 414" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="418" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="452" font-size="23" font-weight="700">3 行缓冲：data 与 event 各自累积</text>
+<text x="62" y="485" font-size="20">CR / LF / CRLF 分行；块尾单独的 CR 暂时等待。</text>
+<text x="62" y="515" font-size="20">data 行存入数组；event 行记录可选名称；注释不产生数据。</text>
+<path d="M 540 547 L 540 564" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="568" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="602" font-size="23" font-weight="700">4 空行：yield 一份完整 SSE 帧</text>
+<text x="62" y="635" font-size="20">{ event, data: 多行内容以换行连接 } → 服务适配器。</text>
+<text x="62" y="665" font-size="20">这里没有 toolCalls，也不知道整条模型消息是否结束。</text>
+<path d="M 540 697 L 540 714" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="718" width="1000" height="126" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="62" y="752" font-size="23" font-weight="700">5 退出：清理读取器</text>
+<text x="62" y="785" font-size="20">正常结束、错误或调用方提前退出 → cancel 剩余读取、releaseLock。</text>
+<text x="62" y="815" font-size="20">未以空行结束的尾部不补成完整帧；不实现重连恢复。</text>
+<text x="40" y="888" font-size="18" fill="#475569">步骤 1–4 持续重复；迭代退出才清理。帧完整不等于模型消息完整。</text></g></svg>

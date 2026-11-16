@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1112" viewBox="0 0 1080 1112" role="img" aria-labelledby="title desc">
+<title id="title">同一个 call_01：从动作请求到下一次输入</title><desc id="desc">教学样本：固定示意 ID；真实运行不预设模型动作与回答。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/></marker></defs>
+<rect width="1080" height="1112" fill="#f8fafc"/>
+<g font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif" fill="#0f172a">
+<text x="44" y="49" font-size="29" font-weight="700">同一个 call_01：从动作请求到下一次输入</text>
+<text x="44" y="89" font-size="19" fill="#475569">教学样本：固定示意 ID；真实运行不预设模型动作与回答。</text>
+<rect x="44" y="120" width="992" height="98" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="68" y="154" font-size="23" font-weight="700">① 应用第一次请求模型</text>
+<text x="68" y="188" font-size="20">messages = [用户任务]；没有源码。Context 另有总体要求和工具说明。</text>
+<path d="M 540 221 L 540 238" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="44" y="242" width="992" height="128" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="68" y="276" font-size="23" font-weight="700">② 服务响应 → decodeMessage → first</text>
+<text x="68" y="310" font-size="20">toolUse；toolCalls[0] = call_01 / read_file / {&quot;path&quot;:&quot;src/cart.ts&quot;}</text>
+<text x="68" y="340" font-size="20">messages.push(first)：记录变为 [用户任务，原模型请求]。</text>
+<path d="M 540 373 L 540 390" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="44" y="394" width="992" height="128" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="68" y="428" font-size="23" font-weight="700">③ executeTools → 工具 execute → 真实文件</text>
+<text x="68" y="462" font-size="20">参数字符串 → JSON 对象 → 允许清单 → 文件内容。</text>
+<text x="68" y="492" font-size="20">Runtime 创建结果：toolCallId = call_01；isError = false；content = 路径与源码。</text>
+<path d="M 540 525 L 540 542" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="44" y="546" width="992" height="128" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="68" y="580" font-size="23" font-weight="700">④ return results → 入口 const results → 保存</text>
+<text x="68" y="614" font-size="20">messages.push(...results)：记录变为 [用户任务，原模型请求，工具结果]。</text>
+<text x="68" y="644" font-size="20">单项请求时长度为 3；完整 assistant 只保存一次。</text>
+<path d="M 540 677 L 540 694" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="44" y="698" width="992" height="128" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="68" y="732" font-size="23" font-weight="700">⑤ 第二次 complete：encodeMessages → HTTP</text>
+<text x="68" y="766" font-size="20">实际发送 4 条：system → user → assistant(tool_calls) → tool。</text>
+<text x="68" y="796" font-size="20">assistant.tool_calls[0].id 与 tool.tool_call_id 都是 call_01。</text>
+<path d="M 540 829 L 540 846" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="44" y="850" width="992" height="128" rx="14" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5"/>
+<text x="68" y="884" font-size="23" font-weight="700">⑥ 服务响应 → decodeMessage → second</text>
+<text x="68" y="918" font-size="20">模型能看到真实读取内容；正常文本才可展示，再对照具体计算检查质量。</text>
+<text x="68" y="948" font-size="20">若仍要工具或输出截断，本篇停止并报告未取得最终回答。</text>
+<text x="44" y="1027" font-size="18" fill="#475569">记录只在内存；工具成功、模型停止与审查正确分别核对。</text></g></svg>

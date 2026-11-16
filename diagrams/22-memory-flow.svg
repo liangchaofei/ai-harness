@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 280" role="img" aria-labelledby="title desc">
+  <title id="title">任务主题怎样决定模型收到的旧线索</title>
+  <desc id="desc">任务配置选择 route-repair。加载任务时从两个主题中选出路径记录。在模型调用前，CLI 把它放在原任务和近期批次之间。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto">
+      <path d="M0 0L8 4L0 8Z" fill="#476783"/>
+    </marker>
+  </defs>
+  <rect width="820" height="280" rx="16" fill="#f3f7fb"/>
+  <g font-family="system-ui,sans-serif" fill="#183149">
+    <text x="26" y="44" font-size="23" font-weight="700">从任务配置到本轮输入</text>
+    <rect x="26" y="71" width="218" height="133" rx="12" fill="#e0edfc"/>
+    <rect x="301" y="71" width="218" height="133" rx="12" fill="#e0f1e9"/>
+    <rect x="576" y="71" width="218" height="133" rx="12" fill="#fff0d9"/>
+    <g font-size="20" font-weight="700">
+      <text x="46" y="107">任务配置</text>
+      <text x="321" y="107">加载任务时选择</text>
+      <text x="596" y="107">模型收到的消息</text>
+    </g>
+    <g font-size="17">
+      <text x="46" y="143">topic = route-repair</text>
+      <text x="46" y="173">task-memory.json</text>
+      <text x="321" y="143">路径线索：保留</text>
+      <text x="321" y="173">发票线索：省略</text>
+      <text x="596" y="138">原任务</text>
+      <text x="596" y="164">旧线索：核对根路径 /</text>
+      <text x="596" y="190">近期工具批次</text>
+      <text x="26" y="247">旧线索提示调查方向，当前源码和实际验收提供本次证据。</text>
+    </g>
+  </g>
+  <path d="M252 138H291M527 138H566" fill="none" stroke="#476783" stroke-width="2" marker-end="url(#arrow)"/>
+</svg>
