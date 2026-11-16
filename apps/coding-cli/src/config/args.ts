@@ -8,6 +8,7 @@ ai-harness --task <任务.json> --decide-check <检查点> <approve|deny>
 ai-harness --resume-log <文件> --follow-up <问题>
 ai-harness --inspect-trace <轨迹文件>
 ai-harness --eval-suite <清单.json> --eval-output <新目录>
+ai-harness --compare-eval <基线.json> <候选.json>
 任务路径相对当前终端目录；配置内路径相对任务文件目录。
 --plan 开启实验性计划；--follow-up 在首次回答后追加一条问题。
 --read-only 只允许调查工具；--approve-tools 在修改或验收前逐次询问。
@@ -29,7 +30,7 @@ export function parseArgs(args: readonly string[]): CliOptions {
     }
     return { help: false, inspectTrace: path };
   }
-  // 【新增】评估入口只接受清单路径和一个新目录。
+  // 评估入口只接受清单路径和一个新目录。
   if (args[0] === '--eval-suite') {
     const [, suite, outputFlag, output] = args;
     if (args.length !== 4 || outputFlag !== '--eval-output' ||
@@ -38,6 +39,15 @@ export function parseArgs(args: readonly string[]): CliOptions {
       throw new Error('任务集评估需要清单和新输出目录。');
     }
     return { help: false, evalSuite: suite, evalOutput: output };
+  }
+  // 【新增】回归比较只接收两份已写出的评估报告。
+  if (args[0] === '--compare-eval') {
+    const [, baseline, candidate] = args;
+    if (args.length !== 3 || !baseline?.trim() || baseline.startsWith('--') ||
+        !candidate?.trim() || candidate.startsWith('--')) {
+      throw new Error('评估比较按顺序接受基线和候选报告。');
+    }
+    return { help: false, compareEval: { baseline, candidate } };
   }
   let taskFile: string | undefined;
   let planning = false;
