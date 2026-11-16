@@ -77,6 +77,7 @@ export default defineConfig({
       ] },
       { text: '第八阶段 · 框架收敛与桌面应用', items: [
         { text: '44 让仓库外的应用安装并使用 Harness', link: '/guide/44-harness-package' },
+        { text: '45 让 CLI 和独立宿主共用任务运行器', link: '/guide/45-task-runner' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },

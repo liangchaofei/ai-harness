@@ -2,7 +2,7 @@
 import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createCodeTaskSession } from '@ai-harness/harness';
+import { createCodeTaskRunner, createCodeTaskSession } from '@ai-harness/harness';
 import { createPlanSession } from '@ai-harness/runtime';
 import type { TaskConfig } from '../types/task';
 import type { CliSession } from '../types/session';
@@ -24,10 +24,12 @@ export async function prepareSession(
     // 本篇只接独立、无依赖的小型ESM教学材料，不覆盖来源中的包配置。
     await writeFile(join(root, 'package.json'), '{"type":"module"}\n', { flag: 'wx' });
     signal?.throwIfAborted();
-    const codeTask = await openTaskWorkspace(task, root, signal)
+    const codeTask = await openTaskWorkspace(task, root, signal);
     return {
       root,
       codeTask,
+      // 【新增】运行与审阅使用同一个已经准备好的工具会话。
+      runner: createCodeTaskRunner(codeTask, task.writablePaths),
       plan: planning ? createPlanSession() : undefined,
     };
   } catch (error) {
@@ -45,7 +47,7 @@ export function openTaskWorkspace(task: TaskConfig, root: string, signal?: Abort
       root,
       extensions: ['.ts', '.json', '.md'],
       writablePaths: task.writablePaths,
-      // 【修改】为新任务与恢复任务应用同一个验收执行策略。
+      // 为新任务与恢复任务应用同一个验收执行策略。
       check: createCheckCommand(task, root),
     },
     signal,

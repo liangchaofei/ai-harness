@@ -3,10 +3,9 @@ import type { RunResult } from '@ai-harness/runtime';
 import type { TaskConfig } from '../types/task';
 import type { CliSession } from '../types/session';
 import { saveAcceptedMemory } from '../context/save-memory';
-import { acceptTask } from '@ai-harness/harness';
 import { printBlock } from './terminal';
 
-/** main调用；inspect失败继续抛出，不能沿用旧报告或按模型总结接受。 */
+/** CLI 打印运行记录与共享 runner 返回的交付证据。 */
 export async function reportSession(
   task: TaskConfig,
   session: CliSession,
@@ -46,7 +45,8 @@ export async function reportSession(
     printBlock('任务计划（模型声明）', session.plan.read());
   }
 
-  const review = await session.codeTask.inspect();
+  // 【修改】同一 runner 审阅最近一段，并给出当前证据的交付判断。
+  const { review, accepted } = await session.runner.review(result);
   for (const change of review.changes) {
     printBlock(`修改前 · ${change.path}`, change.before);
     printBlock(`当前内容 · ${change.path}`, change.after);
@@ -55,7 +55,6 @@ export async function reportSession(
     printBlock('最近实际验收', review.lastCheck);
   }
 
-  const accepted = acceptTask(result, review, task.writablePaths);
   printBlock('交付判断', {
     accepted,
     checkMatchesCurrent: review.checkMatchesCurrent,
@@ -66,7 +65,7 @@ export async function reportSession(
       ? '已形成可审阅交付，尚未合入来源。'
       : '未接受：请查看停止原因、当前变化与实际验收。',
   );
-  // 【新增】仅从已接受的交付提取笔记。记忆写入失败独立报告。
+  // 仅从已接受的交付提取笔记。记忆写入失败独立报告。
   if (accepted && task.memoryCapture) {
     try {
       const status = await saveAcceptedMemory(task.memoryCapture, review, task.checkScript);
