@@ -2,7 +2,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('task', {
-  start: () => ipcRenderer.invoke('task:start'),
+  start: (id, mode) => ipcRenderer.invoke('task:start', id, mode),
   cancel: () => ipcRenderer.invoke('task:cancel'),
   onProgress(callback) {
     const listener = (_event, update) => callback(update);

@@ -79,6 +79,7 @@ export default defineConfig({
         { text: '44 让仓库外的应用安装并使用 Harness', link: '/guide/44-harness-package' },
         { text: '45 让 CLI 和独立宿主共用任务运行器', link: '/guide/45-task-runner' },
         { text: '46 让桌面窗口运行和取消同一个代码任务', link: '/guide/46-desktop-host' },
+        { text: '47 在桌面选择任务，并接入已配置的模型', link: '/guide/47-desktop-task-model' },
       ] },
     ],
     outline: { label: '本页内容', level: [2, 3] },
